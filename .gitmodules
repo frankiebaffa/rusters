@@ -1,0 +1,3 @@
+[submodule "migaton"]
+	path = migaton
+	url = https://github.com/frankiebaffa/migaton
