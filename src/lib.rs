@@ -1,7 +1,9 @@
 use std::io::Write;
 use base64::{write::EncoderStringWriter, URL_SAFE};
 use sha3::{Digest, Sha3_512};
-use sqlite::{Connection, Statement, State};
+use migaton::Migrator;
+#[macro_use]
+use rusqlite::{Connection, Row};
 pub struct Db;
 impl Db {
     pub fn get_connection() -> Connection {
@@ -13,7 +15,7 @@ impl Db {
         return db;
     }
     fn check_db(db: &Connection) {
-        let init_db_sql = include_str!("../sql/up.sql");
+        let init_db_sql = include_str!("../sql/migrations/1.up.sql");
         let stmt_res = db.prepare(init_db_sql);
         let mut stmt = match stmt_res {
             Ok(stmt) => stmt,
@@ -107,6 +109,61 @@ impl User {
     pub fn match_clearance_by_rank(&self, lvl: i64) -> bool {
         return self.clearance.get_rank().eq(&lvl);
     }
+    fn get_by_row(row: &Row) -> Result<User, rusqlite::Error> {
+        let rowid_index = match row.column_index("rowid") {
+            Ok(index) => index,
+            Err(e) => return Err(e),
+        };
+        let rowid = match row.get(rowid_index) {
+            Ok(rowid) => rowid,
+            Err(e) => return Err(e),
+        };
+        let pk_index = match row.column_index("pk") {
+            Ok(index) => index,
+            Err(e) => return Err(e),
+        };
+        let pk = match row.get(pk_index) {
+            Ok(pk) => pk,
+            Err(e) => return Err(e),
+        };
+        let username_index = match row.column_index("username") {
+            Ok(index) => index,
+            Err(e) => return Err(e),
+        };
+        let username = match row.get(username_index) {
+            Ok(username) => username,
+            Err(e) => return Err(e),
+        };
+        let password_hash_index = match row.column_index("password_hash") {
+            Ok(index) => index,
+            Err(e) => return Err(e),
+        };
+        let password_hash = match row.get(password_hash_index) {
+            Ok(password_hash) => password_hash,
+            Err(e) => return Err(e),
+        };
+        let clearance_pk_index = match row.column_index("clearance_pk") {
+            Ok(index) => index,
+            Err(e) => return Err(e),
+        };
+        let clearance_pk = match row.get(clearance_pk_index) {
+            Ok(clearance_pk) => clearance_pk,
+            Err(e) => return Err(e),
+        };
+        let clearance = match Clearance::from_rank(clearance_pk) {
+            Some(clearance) => clearance,
+            None => return Err(rusqlite::Error::InvalidColumnName("Not a real invalid column name. Failed to retrieve rank by pk".to_string())),
+        };
+        let created_dt_index = match row.column_index("created_dt") {
+            Ok(index) => index,
+            Err(e) => return Err(e),
+        };
+        let created_dt = match row.get(created_dt_index) {
+            Ok(created_dt) => created_dt,
+            Err(e) => return Err(e),
+        };
+        return Ok(User { rowid, pk, username, password_hash, clearance_pk, created_dt, clearance });
+    }
     pub fn match_creds(&self, db: &Connection, username: String, password: String) -> Option<User> {
         let base = match User::hash_pw(password) {
             Some(pw) => pw,
@@ -116,58 +173,6 @@ impl User {
             },
         };
         return User::get_by_creds(db, username, base);
-    }
-    fn from_db(sql: Statement) -> Option<User> {
-        let rowid = match sql.read::<i64>(0) {
-            Ok(rowid) => rowid,
-            Err(_) => {
-                println!("Failed to read rowid");
-                return None;
-            },
-        };
-        let pk = match sql.read::<i64>(1) {
-            Ok(pk) => pk,
-            Err(_) => {
-                println!("Failed to read pk");
-                return None;
-            },
-        };
-        let username = match sql.read::<String>(2) {
-            Ok(username) => username,
-            Err(_) => {
-                println!("Failed to read username");
-                return None;
-            },
-        };
-        let password_hash = match sql.read::<String>(3) {
-            Ok(password_hash) => password_hash,
-            Err(_) => {
-                println!("Failed to read password_hash");
-                return None;
-            },
-        };
-        let clearance_pk = match sql.read::<i64>(4) {
-            Ok(clearance_pk) => clearance_pk,
-            Err(_) => {
-                println!("Failed to read clearance_pk");
-                return None;
-            },
-        };
-        let created_dt = match sql.read::<String>(5) {
-            Ok(created_dt) => created_dt,
-            Err(_) => {
-                println!("Failed to read created_dt");
-                return None;
-            },
-        };
-        let clearance = match Clearance::from_rank(clearance_pk) {
-            Some(clearance) => clearance,
-            None => {
-                println!("Failed to retrieve clearance by clearance_pk");
-                return None;
-            },
-        };
-        return Some(User { rowid, pk, username, password_hash, clearance_pk, created_dt, clearance, });
     }
     //fn get_by_pk(db: &Connection, pk: i64) -> Option<User> {
     //    let mut sql = match db.prepare("
@@ -202,76 +207,36 @@ impl User {
     //    };
     //}
     pub fn get_by_creds(db: &Connection, username: String, pw_hash: String) -> Option<User> {
-        let mut sql = match db.prepare("
-            select rowid
-            ,   pk
-            ,   username
-            ,   password_hash
-            ,   clearance_pk
-            ,   created_dt
-            from users
-            where username = ?1
-            and password_hash = ?2
-        ") {
+        const select: &'static str = include_str!("../sql/scripts/users/get_by_creds.sql");
+        let mut sql = match db.prepare(select) {
             Ok(sql) => sql,
             Err(_) => {
                 println!("Failed to retrieve user from credentials");
                 return None;
             },
         };
-        match sql.bind(1, username.as_str()) {
-            Ok(_) => {},
+        return match sql.query_row(&[(":username", &username), (":password_hash", &pw_hash)], |row| {
+            User::get_by_row(row)
+        }) {
+            Ok(user) => Some(user),
             Err(_) => {
-                println!("Failed to bind username");
-                return None;
-            },
-        };
-        match sql.bind(2, pw_hash.as_str()) {
-            Ok(_) => {},
-            Err(_) => {
-                println!("Failed to bind password_hash");
-                return None;
-            },
-        };
-        return match sql.next() {
-            Ok(_) => User::from_db(sql),
-            Err(_) => {
-                println!("Failed to read user from credentials");
-                return None;
+                println!("Failed to retrieve user");
+                None
             },
         };
     }
     pub fn get_by_rowid(db: &Connection, rowid: i64) -> Option<User> {
-        let mut sql = match db.prepare("
-            select rowid
-            ,   pk
-            ,   username
-            ,   password_hash
-            ,   clearance_pk
-            ,   created_dt
-            from users
-            where rowid = ?1
-        ") {
+        const select: &'static str = include_str!("../sql/scripts/users/get_by_row_id.sql");
+        let mut sql = match db.prepare(select) {
             Ok(sql) => sql,
             Err(_) => {
                 println!("Failed to prepare statement");
                 return None;
             },
         };
-        match sql.bind(1, rowid) {
-            Ok(_) => {},
-            Err(_) => {
-                println!("Failed to bind column rowid");
-                return None;
-            },
-        };
-        return match sql.next() {
-            Ok(_) => User::from_db(sql),
-            Err(_) => {
-                println!("Failed to read user by rowid {}", rowid);
-                return None;
-            },
-        };
+        let u = sql.query_row(rusqlite::named_params!{ ":rowid": rowid, }, |row| {
+
+        });
     }
     fn hash_pw(password: String) -> Option<String> {
         return Utils::hash_string(password);
