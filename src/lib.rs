@@ -7,7 +7,7 @@ use rusqlite::{Connection, Row};
 pub struct Db;
 impl Db {
     pub fn get_connection() -> Connection {
-        let db = match Connection::open("./users.rs") {
+        let db = match Connection::open("./users.db") {
             Ok(db) => db,
             Err(e) => panic!("{}", e),
         };
@@ -49,7 +49,8 @@ impl Utils {
         return Some(enc_write.into_inner());
     }
 }
-enum Clearance {
+#[derive(Clone, PartialEq)]
+pub enum Clearance {
     Pawn,
     Knight,
     Bishop,
@@ -58,7 +59,17 @@ enum Clearance {
     King,
 }
 impl Clearance {
-    fn get_rank(&self) -> i64 {
+    pub fn get_all() -> Vec<Clearance> {
+        return vec![
+            Clearance::Pawn,
+            Clearance::Knight,
+            Clearance::Bishop,
+            Clearance::Rook,
+            Clearance::Queen,
+            Clearance::King,
+        ];
+    }
+    pub fn get_rank(&self) -> i64 {
         match self {
             Clearance::Pawn => 5,
             Clearance::Knight => 4,
@@ -68,7 +79,7 @@ impl Clearance {
             Clearance::King => 0,
         }
     }
-    fn get_name<'a>(&self) -> &'a str {
+    pub fn get_name<'a>(&self) -> &'a str {
         match self {
             Clearance::Pawn => "pawn",
             Clearance::Knight => "knight",
@@ -78,7 +89,7 @@ impl Clearance {
             Clearance::King => "king",
         }
     }
-    fn from_rank(rank: i64) -> Option<Clearance> {
+    pub fn from_rank(rank: i64) -> Option<Clearance> {
         match rank {
             5 => Some(Clearance::Pawn),
             4 => Some(Clearance::Knight),
@@ -100,8 +111,14 @@ pub struct User {
     clearance: Clearance,
 }
 impl User {
+    pub fn get_clearance(&self) -> Clearance {
+        return self.clearance.clone();
+    }
     pub fn get_username(&self) -> String {
         return self.username.clone();
+    }
+    pub fn get_password_hash(&self) -> String {
+        return self.password_hash.clone();
     }
     pub fn match_clearance_by_name(&self, name: String) -> bool {
         return self.clearance.get_name().eq(&name);
@@ -210,8 +227,8 @@ impl User {
         const select: &'static str = include_str!("../sql/scripts/users/get_by_creds.sql");
         let mut sql = match db.prepare(select) {
             Ok(sql) => sql,
-            Err(_) => {
-                println!("Failed to retrieve user from credentials");
+            Err(e) => {
+                println!("{}", e);
                 return None;
             },
         };
@@ -238,7 +255,7 @@ impl User {
 
         });
     }
-    fn hash_pw(password: String) -> Option<String> {
+    pub fn hash_pw(password: String) -> Option<String> {
         return Utils::hash_string(password);
     }
     pub fn create_user(db: &Connection, username: String, lvl: i64, password: String) -> Option<User> {
@@ -261,7 +278,7 @@ impl User {
                 (
                     username,
                     password_hash,
-                    clearance_pk
+                    clearance
                 )
             values
                 (
