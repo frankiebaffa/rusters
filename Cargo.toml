@@ -9,9 +9,13 @@ edition = "2018"
 [dependencies.base64]
 version = "0.13"
 
+[dependencies.migaton]
+path = "migaton"
+
 [dependencies.sha3]
 version = "0.9"
 
-[dependencies.sqlite]
-version = "0.26"
+[dependencies.rusqlite]
+version = "0.25"
+features = ["bundled"]
 
