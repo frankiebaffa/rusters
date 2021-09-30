@@ -3,7 +3,6 @@ use base64::{write::EncoderStringWriter, URL_SAFE};
 use sha3::{Digest, Sha3_512};
 use worm_derive::Worm;
 pub mod context;
-#[macro_use]
 use rusqlite::{Connection, Row};
 pub struct Db;
 impl Db {
