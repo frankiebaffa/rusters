@@ -4,18 +4,14 @@ version = "0.1.0"
 authors = ["Frankie Baffa <frankie.baffa@gentryhealthservices.com>"]
 edition = "2018"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[[bin]]
+name = "migrate_up"
+path = "./src/bin/migrate_up.rs"
 
-[dependencies.base64]
-version = "0.13"
-
-[dependencies.migaton]
-path = "migaton"
-
-[dependencies.sha3]
-version = "0.9"
-
-[dependencies.rusqlite]
-version = "0.25"
-features = ["bundled"]
+[dependencies]
+base64 = "0.13"
+dotenv = "0.15"
+migaton = { path = "./migaton" }
+rusqlite = { version = "0.25", features = ["bundled"] }
+sha3 = "0.9"
 

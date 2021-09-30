@@ -1,7 +1,7 @@
 use std::io::Write;
 use base64::{write::EncoderStringWriter, URL_SAFE};
 use sha3::{Digest, Sha3_512};
-use migaton::Migrator;
+pub mod context;
 #[macro_use]
 use rusqlite::{Connection, Row};
 pub struct Db;
@@ -11,23 +11,7 @@ impl Db {
             Ok(db) => db,
             Err(e) => panic!("{}", e),
         };
-        Db::check_db(&db);
         return db;
-    }
-    fn check_db(db: &Connection) {
-        let init_db_sql = include_str!("../sql/migrations/1.up.sql");
-        let stmt_res = db.prepare(init_db_sql);
-        let mut stmt = match stmt_res {
-            Ok(stmt) => stmt,
-            Err(e) => panic!("{}", e),
-        };
-        match stmt.next() {
-            Ok(state) => match state {
-                State::Row => panic!("Db creation statement returned more results than expected"),
-                State::Done => return,
-            },
-            Err(e) => panic!("{}", e),
-        };
     }
 }
 struct Utils {}
@@ -251,87 +235,89 @@ impl User {
                 return None;
             },
         };
-        let u = sql.query_row(rusqlite::named_params!{ ":rowid": rowid, }, |row| {
+        //let u = sql.query_row(rusqlite::named_params!{ ":rowid": rowid, }, |row| {
 
-        });
+        //});
+        panic!("Not implemented");
     }
     pub fn hash_pw(password: String) -> Option<String> {
         return Utils::hash_string(password);
     }
     pub fn create_user(db: &Connection, username: String, lvl: i64, password: String) -> Option<User> {
-        let base = match User::hash_pw(password) {
-            Some(pw) => pw,
-            None => {
-                println!("Failed to hash password");
-                return None;
-            },
-        };
-        let clearance = match Clearance::from_rank(lvl) {
-            Some(c) => c,
-            None => {
-                println!("Could not get clearance by level {}", lvl);
-                return None;
-            },
-        };
-        let mut sql = match db.prepare("
-            insert into users
-                (
-                    username,
-                    password_hash,
-                    clearance
-                )
-            values
-                (
-                    ?1,
-                    ?2,
-                    ?3
-                );
-            select last_insert_rowid();
-        ") {
-            Ok(sql) => sql,
-            Err(_) => {
-                println!("Failed to prepare statement");
-                return None;
-            },
-        };
-        match sql.bind(1, username.as_str()) {
-            Ok(_) => {},
-            Err(_) => {
-                println!("Failed to bind column username");
-                return None;
-            },
-        };
-        match sql.bind(2, base.as_str()) {
-            Ok(_) => {},
-            Err(_) => {
-                println!("Failed to bind column password_hash");
-                return None;
-            },
-        };
-        match sql.bind(3, clearance.get_rank()) {
-            Ok(_) => {},
-            Err(_) => {
-                println!("Failed to bind column clearance");
-                return None;
-            },
-        };
-        let rowid;
-        match sql.next() {
-            Ok(_) => {
-                rowid = match sql.read::<i64>(0) {
-                    Ok(rowid) => rowid,
-                    Err(_) => {
-                        println!("Failed to read last inserted rowid");
-                        return None;
-                    },
-                };
-            },
-            Err(_) => {
-                println!("Failed to retrieve last inserted rowid");
-                return None;
-            },
-        };
-        return User::get_by_rowid(db, rowid);
+        panic!("Not implemented");
+        //let base = match User::hash_pw(password) {
+        //    Some(pw) => pw,
+        //    None => {
+        //        println!("Failed to hash password");
+        //        return None;
+        //    },
+        //};
+        //let clearance = match Clearance::from_rank(lvl) {
+        //    Some(c) => c,
+        //    None => {
+        //        println!("Could not get clearance by level {}", lvl);
+        //        return None;
+        //    },
+        //};
+        //let mut sql = match db.prepare("
+        //    insert into users
+        //        (
+        //            username,
+        //            password_hash,
+        //            clearance
+        //        )
+        //    values
+        //        (
+        //            ?1,
+        //            ?2,
+        //            ?3
+        //        );
+        //    select last_insert_rowid();
+        //") {
+        //    Ok(sql) => sql,
+        //    Err(_) => {
+        //        println!("Failed to prepare statement");
+        //        return None;
+        //    },
+        //};
+        //match sql.bind(1, username.as_str()) {
+        //    Ok(_) => {},
+        //    Err(_) => {
+        //        println!("Failed to bind column username");
+        //        return None;
+        //    },
+        //};
+        //match sql.bind(2, base.as_str()) {
+        //    Ok(_) => {},
+        //    Err(_) => {
+        //        println!("Failed to bind column password_hash");
+        //        return None;
+        //    },
+        //};
+        //match sql.bind(3, clearance.get_rank()) {
+        //    Ok(_) => {},
+        //    Err(_) => {
+        //        println!("Failed to bind column clearance");
+        //        return None;
+        //    },
+        //};
+        //let rowid;
+        //match sql.next() {
+        //    Ok(_) => {
+        //        rowid = match sql.read::<i64>(0) {
+        //            Ok(rowid) => rowid,
+        //            Err(_) => {
+        //                println!("Failed to read last inserted rowid");
+        //                return None;
+        //            },
+        //        };
+        //    },
+        //    Err(_) => {
+        //        println!("Failed to retrieve last inserted rowid");
+        //        return None;
+        //    },
+        //};
+        //return User::get_by_rowid(db, rowid);
     }
 }
 
