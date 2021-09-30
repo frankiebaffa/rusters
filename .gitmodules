@@ -2,3 +2,11 @@
 	path = migaton
 	url = https://github.com/frankiebaffa/migaton
 	branch = master
+[submodule "worm"]
+	path = worm
+	url = https://github.com/frankiebaffa/worm
+	branch = master
+[submodule "worm_derive"]
+	path = worm_derive
+	url = https://github.com/frankiebaffa/worm_derive
+	branch = master

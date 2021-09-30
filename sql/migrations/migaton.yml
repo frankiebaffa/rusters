@@ -1,5 +1,11 @@
 ordering: [
+  tbl_clearances,
+  idx_clearancesuniquename,
+  idx_clearancesuniquesequence,
+  ins_clearances_items,
   tbl_users,
+  idx_usersuniquename,
   tbl_sessions,
+  idx_sessionsuniquehash,
   tbl_salts,
 ]

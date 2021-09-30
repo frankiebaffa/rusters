@@ -1,2 +1,1 @@
 drop table RustersDb.Sessions;
-

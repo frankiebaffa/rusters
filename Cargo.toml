@@ -14,4 +14,6 @@ dotenv = "0.15"
 migaton = { path = "./migaton" }
 rusqlite = { version = "0.25", features = ["bundled"] }
 sha3 = "0.9"
+worm = { path = "./worm" }
+worm_derive = { path = "./worm_derive" }
 

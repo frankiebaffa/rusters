@@ -7,4 +7,3 @@ create table RustersDb.Sessions
 		Expired_DT text not null default (datetime(current_timestamp, '+1 hours')),
 		foreign key (User_PK) references Users (PK)
 	);
-
