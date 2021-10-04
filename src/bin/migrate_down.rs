@@ -10,7 +10,7 @@ fn main() {
     db.context.attach_dbs();
     let mut mem_c = mem_db.context.use_connection();
     let mut c = db.context.use_connection();
-    let skips = match Migrator::do_up(&mut mem_c, &mut c, "./sql/migrations") {
+    let skips = match Migrator::do_down(&mut mem_c, &mut c, "./sql/migrations") {
         Ok(res) => res,
         Err(e) => panic!("{}", e),
     };

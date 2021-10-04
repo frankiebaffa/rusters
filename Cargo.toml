@@ -8,12 +8,25 @@ edition = "2018"
 name = "migrate_up"
 path = "./src/bin/migrate_up.rs"
 
+[[bin]]
+name = "migrate_down"
+path = "./src/bin/migrate_down.rs"
+
+[[bin]]
+name = "create_user"
+path = "./src/bin/create_user.rs"
+
+[[bin]]
+name = "test_login"
+path = "./src/bin/test_login.rs"
+
 [dependencies]
 base64 = "0.13"
+chrono = "0.4"
 dotenv = "0.15"
-migaton = { path = "./migaton" }
+migaton = { git = "https://github.com/frankiebaffa/migaton", branch = "master" }
 rusqlite = { version = "0.25", features = ["bundled"] }
 sha3 = "0.9"
-worm = { path = "./worm" }
-worm_derive = { path = "./worm_derive" }
+worm = { git = "https://github.com/frankiebaffa/worm", branch = "master" }
+worm_derive = { git = "https://github.com/frankiebaffa/worm_derive", branch = "master" }
 
