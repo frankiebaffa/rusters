@@ -7,5 +7,6 @@ ordering: [
   idx_usersuniquename,
   tbl_sessions,
   idx_sessionsuniquehash,
-  tbl_salts,
+  tbl_sessioncookies,
+  idx_sessioncookiesuniquename,
 ]

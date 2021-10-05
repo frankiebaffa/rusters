@@ -20,8 +20,25 @@ path = "./src/bin/create_user.rs"
 name = "test_login"
 path = "./src/bin/test_login.rs"
 
+[[bin]]
+name = "test_logout"
+path = "./src/bin/test_logout.rs"
+
+[[bin]]
+name = "test_is_logged_in"
+path = "./src/bin/test_is_logged_in.rs"
+
+[[bin]]
+name = "test_set_cookie"
+path = "./src/bin/test_set_cookie.rs"
+
+[[bin]]
+name = "test_read_cookie"
+path = "./src/bin/test_read_cookie.rs"
+
 [dependencies]
 base64 = "0.13"
+bcrypt = "0.10"
 chrono = "0.4"
 dotenv = "0.15"
 migaton = { git = "https://github.com/frankiebaffa/migaton", branch = "master" }
