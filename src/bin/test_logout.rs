@@ -1,7 +1,12 @@
 use rusters::Session;
-use rusters::Database;
-use worm::DbCtx;
+use worm::{DbCtx, DbContext};
 use std::io::BufRead;
+use worm_derive::WormDb;
+#[derive(WormDb)]
+#[db(var(name="RUSTERSDBS"))]
+struct Database {
+    context: DbContext,
+}
 fn main() {
     let mut db = Database::init();
     db.context.attach_dbs();
@@ -18,7 +23,11 @@ fn main() {
     //    Ok(c) => c,
     //    Err(e) => panic!("{}", e),
     //};
-    if Session::log_out(&mut db, &session_hash) {
+    let logged_out = match Session::log_out(&mut db, &session_hash) {
+        Ok(b) => b,
+        Err(e) => panic!("{}", e),
+    };
+    if logged_out {
         println!("Logged out!");
     } else {
         println!("Was not logged in.");

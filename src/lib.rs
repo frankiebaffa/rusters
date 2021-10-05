@@ -26,29 +26,18 @@ use {
         Read,
         Write,
     },
-    worm::{
-        DbContext,
-        traits::{
-            dbmodel::DbModel,
-            dbctx::DbCtx,
-            primarykey::PrimaryKey,
-            uniquename::{
-                UniqueNameModel,
-                UniqueName,
-            },
+    worm::traits::{
+        dbmodel::DbModel,
+        dbctx::DbCtx,
+        primarykey::PrimaryKey,
+        uniquename::{
+            UniqueNameModel,
+            UniqueName,
         },
     },
-    worm_derive::{
-        Worm,
-        WormDb
-    },
+    worm_derive::Worm,
 };
 pub mod context;
-#[derive(WormDb)]
-#[db(var(name="RUSTERSDBS"))]
-pub struct Database {
-    pub context: DbContext,
-}
 #[derive(Debug)]
 pub enum RustersError {
     BcryptError(BcryptError),
@@ -135,7 +124,7 @@ impl Hasher {
     }
 }
 #[derive(Worm)]
-#[dbmodel(table(db="Database", schema="RustersDb", name="Clearances", alias="clearance"))]
+#[dbmodel(table(schema="RustersDb", name="Clearances", alias="clearance"))]
 pub struct Clearance {
     #[dbcolumn(column(name="PK", primary_key))]
     pk: i64,
@@ -145,7 +134,7 @@ pub struct Clearance {
     name: String,
 }
 #[derive(Worm)]
-#[dbmodel(table(db="Database", schema="RustersDb", name="Users", alias="user"))]
+#[dbmodel(table(schema="RustersDb", name="Users", alias="user"))]
 pub struct User {
     #[dbcolumn(column(name="PK", primary_key))]
     pk: i64,
@@ -163,7 +152,7 @@ pub struct User {
     created_dt: DateTime<Utc>,
 }
 impl User {
-    pub fn create<'a>(db: &mut Database, username: &'a str, password: &'a str, clearance: Clearance) -> Result<Self, RustersError> {
+    pub fn create<'a>(db: &mut impl DbCtx, username: &'a str, password: &'a str, clearance: Clearance) -> Result<Self, RustersError> {
         let hashed = Hasher::hash_password(password.to_owned())?;
         let salt = hashed.salt;
         let pw_hash = hashed.b64_hash;
@@ -174,7 +163,7 @@ impl User {
         };
         return Ok(user);
     }
-    pub fn login<'a>(db: &mut Database, username: &'a str, password: &'a str) -> Result<String, RustersError> {
+    pub fn login<'a>(db: &mut impl DbCtx, username: &'a str, password: &'a str) -> Result<String, RustersError> {
         let user = User::get_by_name(db, username).unwrap();
         let stored_hash = user.get_password_hash();
         let verified = Hasher::verify(password, &stored_hash)?;
@@ -195,7 +184,7 @@ impl User {
     }
 }
 #[derive(Worm)]
-#[dbmodel(table(db="Database", schema="RustersDb", name="Sessions", alias="session"))]
+#[dbmodel(table(schema="RustersDb", name="Sessions", alias="session"))]
 pub struct Session {
     #[dbcolumn(column(name="PK", primary_key))]
     pk: i64,
@@ -209,7 +198,7 @@ pub struct Session {
     expired_dt: DateTime<Utc>,
 }
 impl Session {
-    pub fn is_logged_in<'a>(db: &mut Database, hash: &'a str) -> Result<Option<Session>, RustersError> {
+    pub fn is_logged_in<'a>(db: &mut impl DbCtx, hash: &'a str) -> Result<Option<Session>, RustersError> {
         let sql = format!("
             select {}.*
             from {}.{} as {}
@@ -240,7 +229,7 @@ impl Session {
         session.update_expired(db, exp)?;
         return Ok(Some(session));
     }
-    pub fn log_out<'a>(db: &mut Database, hash: &'a str) -> Result<bool, RustersError> {
+    pub fn log_out<'a>(db: &mut impl DbCtx, hash: &'a str) -> Result<bool, RustersError> {
         let session_res = Session::is_logged_in(db, hash)?;
         if session_res.is_none() {
             return Ok(false);
@@ -249,7 +238,7 @@ impl Session {
         session.update_expired(db, Utc::now())?;
         return Ok(true);
     }
-    fn update_expired(&self, db: &mut Database, new_exp: DateTime<Utc>) -> Result<(), RustersError> {
+    fn update_expired(&self, db: &mut impl DbCtx, new_exp: DateTime<Utc>) -> Result<(), RustersError> {
         let sql = format!(
             "update {}.{} set Expired_DT = :dt where PK = :pk",
             Self::DB, Self::TABLE,
@@ -267,7 +256,7 @@ impl Session {
     }
 }
 #[derive(Worm)]
-#[dbmodel(table(db="Database",schema="RustersDb",name="SessionCookies",alias="sessioncookie"))]
+#[dbmodel(table(schema="RustersDb",name="SessionCookies",alias="sessioncookie"))]
 pub struct SessionCookie {
     #[dbcolumn(column(name="PK", primary_key))]
     pk: i64,
@@ -281,7 +270,7 @@ pub struct SessionCookie {
     created_dt: DateTime<Utc>,
 }
 impl SessionCookie {
-    pub fn create_or_update<'a>(db: &mut Database, session_hash: &'a str, name: &'a str, value: &'a str) -> Result<(), RustersError> {
+    pub fn create_or_update<'a>(db: &mut impl DbCtx, session_hash: &'a str, name: &'a str, value: &'a str) -> Result<(), RustersError> {
         let session_res = Session::is_logged_in(db, session_hash)?;
         if session_res.is_none() {
             return Err(RustersError::NotLoggedInError);
@@ -299,7 +288,7 @@ impl SessionCookie {
         Self::update(db, session_hash, name, value);
         Ok(())
     }
-    pub fn read_value<'a>(db: &mut Database, session_hash: &'a str, name: &'a str) -> Result<Option<String>, RustersError> {
+    pub fn read_value<'a>(db: &mut impl DbCtx, session_hash: &'a str, name: &'a str) -> Result<Option<String>, RustersError> {
         let session_res = Session::is_logged_in(db, session_hash)?;
         if session_res.is_none() {
             return Err(RustersError::NotLoggedInError);
@@ -307,7 +296,7 @@ impl SessionCookie {
         let session = session_res.unwrap();
         return Ok(Self::read(db, &session, name)?);
     }
-    fn read<'a>(db: &mut Database, session: &Session, name: &'a str) -> Result<Option<String>, RustersError> {
+    fn read<'a>(db: &mut impl DbCtx, session: &Session, name: &'a str) -> Result<Option<String>, RustersError> {
         let sql = format!("
             select {}.*
             from {}.{} as {}
@@ -337,7 +326,7 @@ impl SessionCookie {
         let cookie = cookie_res.unwrap();
         return Ok(Some(cookie.value));
     }
-    fn update<'a>(db: &mut Database, session_hash: &'a str, name: &'a str, value: &'a str) {
+    fn update<'a>(db: &mut impl DbCtx, session_hash: &'a str, name: &'a str, value: &'a str) {
         let sql = format!("
             update {}.{}
             set Value = :value

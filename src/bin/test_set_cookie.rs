@@ -1,7 +1,12 @@
-use rusters::Database;
 use rusters::SessionCookie;
-use worm::DbCtx;
+use worm::{DbCtx, DbContext};
 use std::io::BufRead;
+use worm_derive::WormDb;
+#[derive(WormDb)]
+#[db(var(name="RUSTERSDBS"))]
+struct Database {
+    context: DbContext,
+}
 fn main() {
     let mut db = Database::init();
     db.context.attach_dbs();
@@ -14,6 +19,9 @@ fn main() {
         Err(e) => panic!("{}", e),
     }
     session_hash = session_hash.trim().to_string();
-    SessionCookie::create_or_update(&mut db, &session_hash, "Test", "Hello, World!");
+    match SessionCookie::create_or_update(&mut db, &session_hash, "Test", "Hello, World!") {
+        Ok(_) => {},
+        Err(e) => panic!("{}", e),
+    }
     println!("Created cookie");
 }

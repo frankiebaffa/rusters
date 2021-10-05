@@ -1,7 +1,12 @@
 use rusters::SessionCookie;
-use rusters::Database;
-use worm::DbCtx;
+use worm::{DbCtx, DbContext};
 use std::io::BufRead;
+use worm_derive::WormDb;
+#[derive(WormDb)]
+#[db(var(name="RUSTERSDBS"))]
+struct Database {
+    context: DbContext,
+}
 fn main() {
     let mut db = Database::init();
     db.context.attach_dbs();
@@ -14,7 +19,10 @@ fn main() {
         Err(e) => panic!("{}", e),
     }
     session_hash = session_hash.trim().to_string();
-    let cookie_res = SessionCookie::read_value(&mut db, &session_hash, "Test");
+    let cookie_res = match SessionCookie::read_value(&mut db, &session_hash, "Test") {
+        Ok(res) => res,
+        Err(e) => panic!("{}", e),
+    };
     if cookie_res.is_none() {
         println!("No value for cookie");
     } else {

@@ -1,10 +1,15 @@
 use rusters::Clearance;
 use rusters::User;
-use rusters::Database;
-use worm::DbCtx;
+use worm::{DbCtx, DbContext};
 use worm::traits::primarykey::PrimaryKeyModel;
 use worm::traits::uniquename::UniqueName;
+use worm_derive::WormDb;
 use std::io::BufRead;
+#[derive(WormDb)]
+#[db(var(name="RUSTERSDBS"))]
+struct Database {
+    context: DbContext,
+}
 fn main() {
     let mut db = Database::init();
     db.context.attach_dbs();
