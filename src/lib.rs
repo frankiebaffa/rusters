@@ -267,6 +267,8 @@ pub struct SessionCookie {
     name: String,
     #[dbcolumn(column(name="Value", insertable))]
     value: String,
+    #[dbcolumn(column(name="Active", active_flag))]
+    active: bool,
     #[dbcolumn(column(name="Created_DT", insertable))]
     created_dt: DateTime<Utc>,
 }
@@ -297,15 +299,25 @@ impl SessionCookie {
         let session = session_res.unwrap();
         return Ok(Self::read(db, &session, name)?);
     }
+    pub fn delete_cookie<'a>(db: &mut impl DbCtx, session_hash: &'a str, name: &'a str) -> Result<(), RustersError> {
+        let session_res = Session::is_logged_in(db, session_hash)?;
+        if session_res.is_none() {
+            return Err(RustersError::NotLoggedInError);
+        }
+        Self::delete(db, session_hash, name);
+        Ok(())
+    }
     fn read<'a>(db: &mut impl DbCtx, session: &Session, name: &'a str) -> Result<Option<String>, RustersError> {
         let sql = format!("
             select {}.*
             from {}.{} as {}
             where {}.Session_PK = :pk
             and {}.Name = :name
+            and {}.Active = 1
             limit 1;",
             Self::ALIAS,
             Self::DB, Self::TABLE, Self::ALIAS,
+            Self::ALIAS,
             Self::ALIAS,
             Self::ALIAS,
         );
@@ -336,6 +348,7 @@ impl SessionCookie {
             on {}.PK = {}.Session_PK
             and {}.Hash = :hash
             and {}.Name = :name
+            and {}.Active = 1
             and {}.Expired_DT > :now;",
             Self::DB, Self::TABLE,
             Session::DB, Session::TABLE, Session::ALIAS,
@@ -343,10 +356,34 @@ impl SessionCookie {
             Session::ALIAS, Self::ALIAS,
             Session::ALIAS,
             Self::ALIAS,
+            Self::ALIAS,
             Session::ALIAS,
         );
         let c = db.use_connection();
         c.execute(&sql, named_params!{ ":value": value, ":hash": session_hash, ":name": name, ":now": Utc::now(), }).unwrap();
+    }
+    fn delete<'a>(db: &mut impl DbCtx, session_hash: &'a str, name: &'a str) {
+        let sql = format!("
+            update {}.{}
+            set Active = 0
+            from {}.{} as {}
+            join {}.{} as {}
+            on {}.PK = {}.Session_PK
+            and {}.Hash = :hash
+            and {}.Name = :name
+            and {}.Active = 1
+            and {}.Expired_DT > :now;",
+            Self::DB, Self::TABLE,
+            Session::DB, Session::TABLE, Session::ALIAS,
+            Self::DB, Self::TABLE, Self::ALIAS,
+            Session::ALIAS, Self::ALIAS,
+            Session::ALIAS,
+            Self::ALIAS,
+            Self::ALIAS,
+            Session::ALIAS,
+        );
+        let c = db.use_connection();
+        c.execute(&sql, named_params!{ ":hash": session_hash, ":name": name, ":now": Utc::now(), }).unwrap();
     }
 }
 pub struct Migrations;
