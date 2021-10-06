@@ -16,6 +16,7 @@ use {
         Duration,
         Utc,
     },
+    migaton::Migrator,
     rusqlite::{
         Error as RusqliteError,
         named_params,
@@ -346,6 +347,28 @@ impl SessionCookie {
         );
         let c = db.use_connection();
         c.execute(&sql, named_params!{ ":value": value, ":hash": session_hash, ":name": name, ":now": Utc::now(), }).unwrap();
+    }
+}
+pub struct Migrations;
+impl Migrations {
+    const MIGRATIONS_PATH: &'static str = concat!(env!("CARGO_MANIFEST_DIR"), "/sql/migrations");
+    pub fn migrate_up(mem_db: &mut impl DbCtx, db: &mut impl DbCtx) -> usize {
+        let mut mem_c = mem_db.use_connection();
+        let mut c = db.use_connection();
+        let skips = match Migrator::do_up(&mut mem_c, &mut c, Self::MIGRATIONS_PATH) {
+            Ok(res) => res,
+            Err(e) => panic!("{}", e),
+        };
+        return skips;
+    }
+    pub fn migrate_down(mem_db: &mut impl DbCtx, db: &mut impl DbCtx) -> usize {
+        let mut mem_c = mem_db.use_connection();
+        let mut c = db.use_connection();
+        let skips = match Migrator::do_down(&mut mem_c, &mut c, Self::MIGRATIONS_PATH) {
+            Ok(res) => res,
+            Err(e) => panic!("{}", e),
+        };
+        return skips;
     }
 }
 

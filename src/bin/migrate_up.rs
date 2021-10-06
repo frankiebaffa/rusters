@@ -1,5 +1,5 @@
 use {
-    migaton::Migrator,
+    rusters::Migrations,
     worm::{
         DbCtx,
         DbContext,
@@ -16,11 +16,6 @@ fn main() {
     mem_db.context.attach_temp_dbs();
     let mut db = Database::init();
     db.context.attach_dbs();
-    let mut mem_c = mem_db.context.use_connection();
-    let mut c = db.context.use_connection();
-    let skips = match Migrator::do_up(&mut mem_c, &mut c, "./sql/migrations") {
-        Ok(res) => res,
-        Err(e) => panic!("{}", e),
-    };
+    let skips = Migrations::migrate_up(&mut mem_db, &mut db);
     println!("{} migrations were skipped", skips);
 }
