@@ -223,7 +223,7 @@ impl Session {
                 Session::from_row(&row)
             }) {
                 Ok(s) => s,
-                Err(e) => return Err(RustersError::SQLError(e)),
+                Err(_) => return Ok(None),
             };
         }
         let exp: DateTime<Utc> = Utc::now() + Duration::hours(1);
