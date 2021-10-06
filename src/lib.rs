@@ -165,7 +165,10 @@ impl User {
         return Ok(user);
     }
     pub fn login<'a>(db: &mut impl DbCtx, username: &'a str, password: &'a str) -> Result<String, RustersError> {
-        let user = User::get_by_name(db, username).unwrap();
+        let user = match User::get_by_name(db, username) {
+            Ok(user) => user,
+            Err(e) => return Err(RustersError::SQLError(e)),
+        };
         let stored_hash = user.get_password_hash();
         let verified = Hasher::verify(password, &stored_hash)?;
         if !verified {
