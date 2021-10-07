@@ -388,6 +388,20 @@ impl SessionCookie {
         let c = db.use_connection();
         c.execute(&sql, named_params!{ ":hash": session_hash, ":name": name, ":now": Utc::now(), }).unwrap();
     }
+    pub fn delete_self<'a>(&self, db: &mut impl DbCtx, session_hash: &'a str) -> Result<(), RustersError> {
+        let sql = format!("
+            update {}.{}
+            set Active = 0
+            where {}.{} = :id",
+            Self::DB, Self::Table,
+            Self::Table, Self::PrimaryKey
+        );
+        let c = db.use_connection();
+        match c.execute(&sql, named_params!{ ":id": self.get_id(), }) {
+            Ok(_) => Ok(()),
+            Err(e) => return Err(RustersError::SQLError(e)),
+        };
+    }
 }
 pub struct Migrations;
 impl Migrations {
