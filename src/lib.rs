@@ -302,7 +302,7 @@ impl SessionCookie {
         let session = session_res.unwrap();
         return Ok(Self::read(db, &session, name)?);
     }
-    pub fn get_alerts<'a>(db: &mut impl DbCtx, session_hash: &'a str) -> Result<Option<String>, RustersError> {
+    pub fn get_alerts<'a>(db: &mut impl DbCtx, session_hash: &'a str) -> Result<Vec<Self>, RustersError> {
         let session_res = Session::is_logged_in(db, session_hash)?;
         if session_res.is_none() {
             return Err(RustersError::NotLoggedInError);
@@ -350,7 +350,7 @@ impl SessionCookie {
         let cookie = cookie_res.unwrap();
         return Ok(Some(cookie.value));
     }
-    fn alerts<'a>(db: &mut impl DbCtx, session: &Session) -> Result<Option<String>, RustersError> {
+    fn alerts<'a>(db: &mut impl DbCtx, session: &Session) -> Result<Vec<Self>, RustersError> {
         let sql = format!("
             select {}.*
             from {}.{} as {}
@@ -379,11 +379,17 @@ impl SessionCookie {
             Err(e) => return Err(RustersError::SQLError(e)),
         }.collect();
         if cookies.len() == 0 {
-            return Ok(None);
+            return Ok(Vec::new());
         }
-        let cookie_res = cookies.into_iter().nth(0).unwrap();
-        let cookie = cookie_res.unwrap();
-        return Ok(Some(cookie.value));
+        let mut alerts = Vec::new();
+        for cookie_res in cookies {
+            let c = match cookie_res {
+                Ok(c) => c,
+                Err(e) => return Err(RustersError::SQLError(e)),
+            };
+            alerts.push(c);
+        }
+        return Ok(alerts);
     }
     fn update<'a>(db: &mut impl DbCtx, session_hash: &'a str, name: &'a str, value: &'a str) {
         let sql = format!("
