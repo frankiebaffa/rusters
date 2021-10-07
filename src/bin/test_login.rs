@@ -1,5 +1,5 @@
-use rusters::User;
-use worm::{DbCtx, DbContext};
+use rusters::{User, Session};
+use worm::{DbCtx, DbContext, traits::uniquename::UniqueName};
 use std::io::BufRead;
 use worm_derive::WormDb;
 #[derive(WormDb)]
@@ -26,13 +26,17 @@ fn main() {
         Err(e) => panic!("{}", e),
     }
     password = password.trim().to_string();
+    let session = match Session::create_new(&mut db) {
+        Ok(s) => s,
+        Err(e) => panic!("{}", e),
+    };
     //let clearance = match Clearance::get_by_id(&mut db, 1) {
     //    Ok(c) => c,
     //    Err(e) => panic!("{}", e),
     //};
-    let session_hash = match User::login(&mut db, &username, &password) {
-        Ok(hash) => hash,
+    let user = match session.login(&mut db, &username, &password) {
+        Ok(u) => u,
         Err(e) => panic!("{}", e),
     };
-    println!("Logged in user\r\nusername: {}\r\nsession hash: {}", username, session_hash);
+    println!("Logged in user\r\nusername: {}\r\nsession hash: {}", user.get_name(), session.get_hash());
 }

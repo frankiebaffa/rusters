@@ -20,6 +20,17 @@ fn main() {
     //    Ok(c) => c,
     //    Err(e) => panic!("{}", e),
     //};
-    Session::is_logged_in(&mut db, &session_hash).unwrap();
-    println!("Is logged in");
+    let session = match Session::get_active(&mut db, &session_hash) {
+        Ok(s) => s,
+        Err(e) => panic!("{}", e),
+    };
+    let user_opt = match session.is_logged_in(&mut db) {
+        Ok(user) => user,
+        Err(e) => panic!("{}", e),
+    };
+    if user_opt.is_some() {
+        println!("Is logged in");
+    } else {
+        println!("No user logged in");
+    }
 }

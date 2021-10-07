@@ -23,13 +23,13 @@ fn main() {
     //    Ok(c) => c,
     //    Err(e) => panic!("{}", e),
     //};
-    let logged_out = match Session::log_out(&mut db, &session_hash) {
-        Ok(b) => b,
+    let session = match Session::get_active(&mut db, &session_hash) {
+        Ok(s) => s,
         Err(e) => panic!("{}", e),
     };
-    if logged_out {
-        println!("Logged out!");
-    } else {
-        println!("Was not logged in.");
-    }
+    match session.log_out(&mut db) {
+        Ok(_) => {},
+        Err(e) => panic!("{}", e),
+    };
+    println!("Logged out!");
 }

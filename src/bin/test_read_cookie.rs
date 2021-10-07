@@ -1,4 +1,4 @@
-use rusters::SessionCookie;
+use rusters::Session;
 use worm::{DbCtx, DbContext};
 use std::io::BufRead;
 use worm_derive::WormDb;
@@ -19,7 +19,11 @@ fn main() {
         Err(e) => panic!("{}", e),
     }
     session_hash = session_hash.trim().to_string();
-    let cookie_res = match SessionCookie::read_value(&mut db, &session_hash, "Test") {
+    let session = match Session::get_active(&mut db, &session_hash) {
+        Ok(s) => s,
+        Err(e) => panic!("{}", e),
+    };
+    let cookie_res = match session.read_cookie(&mut db, "Test") {
         Ok(res) => res,
         Err(e) => panic!("{}", e),
     };

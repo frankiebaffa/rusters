@@ -19,7 +19,11 @@ fn main() {
         Err(e) => panic!("{}", e),
     }
     session_hash = session_hash.trim().to_string();
-    match SessionCookie::create_or_update(&mut db, &session_hash, "Test", "Hello, World!") {
+    let session = match Session::get_active(&mut db, &session_hash) {
+        Ok(s) => s,
+        Err(e) => panic!("{}", e),
+    };
+    match session.a(&mut db, &session_hash, "Test", "Hello, World!") {
         Ok(_) => {},
         Err(e) => panic!("{}", e),
     }
