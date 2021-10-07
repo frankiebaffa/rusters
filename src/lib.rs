@@ -109,8 +109,23 @@ impl Hasher {
         };
     }
     fn get_session_hash<'a>(username: &'a str, salt: &'a str) -> Result<String, RustersError> {
-        let now: DateTime<Utc> = Utc::now();
+        let now = Utc::now();
         let hash_parts = match hash_with_result(format!("|{}|{}|{}|",username, salt, now.format("%+")), Self::COST) {
+            Ok(hash_parts) => hash_parts,
+            Err(e) => return Err(RustersError::BcryptError(e)),
+        };
+        let hash = hash_parts.format_for_version(Self::VERSION);
+        let mut enc_write = EncoderStringWriter::new(URL_SAFE);
+        match enc_write.write_all(hash.as_bytes()) {
+            Ok(b) => b,
+            Err(e) => return Err(RustersError::IOError(e)),
+        }
+        let b64 = enc_write.into_inner();
+        return Ok(b64);
+    }
+    fn get_open_session_hash<'a>() -> Result<String, RustersError> {
+        let now = Utc::now();
+        let hash_parts = match hash_with_result(format!("{}", now.format("%+")), Self::COST) {
             Ok(hash_parts) => hash_parts,
             Err(e) => return Err(RustersError::BcryptError(e)),
         };
@@ -185,6 +200,260 @@ impl User {
             Err(e) => return Err(RustersError::SQLError(e)),
         };
         return Ok(session.get_hash());
+    }
+}
+#[derive(Worm)]
+#[dbmodel(table(schema="RustersDb", name="OpenSessions", alias="session"))]
+pub struct OpenSession {
+    #[dbcolumn(column(name="PK", primary_key))]
+    pk: i64,
+    #[dbcolumn(column(name="Hash", insertable))]
+    hash: String,
+    #[dbcolumn(column(name="Created_DT", insertable))]
+    created_dt: DateTime<Utc>,
+    #[dbcolumn(column(name="Expired_DT", insertable))]
+    expired_dt: DateTime<Utc>,
+}
+impl OpenSession {
+    pub fn get_active<'a>(db: &mut impl DbCtx, hash: &'a str) -> Result<Option<OpenSession>, RustersError> {
+        let sql = format!("
+            select {}.*
+            from {}.{} as {}
+            where {}.Expired_DT > :now
+            and {}.Hash = :hash
+            limit 1;",
+            Self::ALIAS,
+            Self::DB, Self::TABLE, Self::ALIAS,
+            Self::ALIAS,
+            Self::ALIAS,
+        );
+        let session;
+        {
+            let c = db.use_connection();
+            let mut stmt = match c.prepare(&sql) {
+                Ok(stmt) => stmt,
+                Err(e) => return Err(RustersError::SQLError(e)),
+            };
+            let now: DateTime<Utc> = Utc::now();
+            session = match stmt.query_row(named_params!{ ":now": now, ":hash": hash, }, |row| {
+                OpenSession::from_row(&row)
+            }) {
+                Ok(s) => s,
+                Err(_) => return Ok(None),
+            };
+        }
+        let exp: DateTime<Utc> = Utc::now() + Duration::hours(1);
+        session.update_expired(db, exp)?;
+        return Ok(Some(session));
+    }
+    fn update_expired(&self, db: &mut impl DbCtx, new_exp: DateTime<Utc>) -> Result<(), RustersError> {
+        let sql = format!(
+            "update {}.{} set Expired_DT = :dt where PK = :pk",
+            Self::DB, Self::TABLE,
+        );
+        let c = db.use_connection();
+        let mut stmt = match c.prepare(&sql) {
+            Ok(stmt) => stmt,
+            Err(e) => return Err(RustersError::SQLError(e)),
+        };
+        match stmt.execute(named_params!{ ":dt": new_exp, ":pk": self.get_id() }) {
+            Ok(_) => {},
+            Err(e) => return Err(RustersError::SQLError(e)),
+        }
+        Ok(())
+    }
+}
+#[derive(Worm)]
+#[dbmodel(table(schema="RustersDb", name="OpenSessionCookies", alias="opensessioncookie"))]
+pub struct OpenSessionCookie {
+    #[dbcolumn(column(name="PK", primary_key))]
+    pk: i64,
+    #[dbcolumn(column(name="OpenSession_PK", foreign_key="OpenSession", insertable))]
+    opensession_pk: i64,
+    #[dbcolumn(column(name="Name", insertable))]
+    name: String,
+    #[dbcolumn(column(name="Value", insertable))]
+    value: String,
+    #[dbcolumn(column(name="Active", active_flag))]
+    active: bool,
+    #[dbcolumn(column(name="Created_DT", insertable))]
+    created_dt: DateTime<Utc>,
+}
+impl OpenSessionCookie {
+    pub fn create_or_update<'a>(db: &mut impl DbCtx, session_hash: &'a str, name: &'a str, value: &'a str) -> Result<(), RustersError> {
+        let session_res = OpenSession::is_logged_in(db, session_hash)?;
+        if session_res.is_none() {
+            return Err(RustersError::NotLoggedInError);
+        }
+        let session = session_res.unwrap();
+        let existing_cookie = Self::read(db, &session, name)?;
+        if existing_cookie.is_none() {
+            let now = Utc::now();
+            match OpenSessionCookie::insert_new(db, session.pk, name.to_string(), value.to_string(), now) {
+                Ok(_) => {},
+                Err(e) => return Err(RustersError::SQLError(e)),
+            };
+            return Ok(());
+        }
+        Self::update(db, session_hash, name, value);
+        Ok(())
+    }
+    pub fn read_value<'a>(db: &mut impl DbCtx, session_hash: &'a str, name: &'a str) -> Result<Option<String>, RustersError> {
+        let session_res = OpenSession::is_logged_in(db, session_hash)?;
+        if session_res.is_none() {
+            return Err(RustersError::NotLoggedInError);
+        }
+        let session = session_res.unwrap();
+        return Ok(Self::read(db, &session, name)?);
+    }
+    pub fn get_alerts<'a>(db: &mut impl DbCtx, session_hash: &'a str) -> Result<Vec<Self>, RustersError> {
+        let session_res = OpenSession::is_logged_in(db, session_hash)?;
+        if session_res.is_none() {
+            return Err(RustersError::NotLoggedInError);
+        }
+        let session = session_res.unwrap();
+        return Ok(Self::alerts(db, &session)?);
+    }
+    pub fn delete_cookie<'a>(db: &mut impl DbCtx, session_hash: &'a str, name: &'a str) -> Result<(), RustersError> {
+        let session_res = OpenSession::is_logged_in(db, session_hash)?;
+        if session_res.is_none() {
+            return Err(RustersError::NotLoggedInError);
+        }
+        Self::delete(db, session_hash, name);
+        Ok(())
+    }
+    fn read<'a>(db: &mut impl DbCtx, session: &OpenSession, name: &'a str) -> Result<Option<String>, RustersError> {
+        let sql = format!("
+            select {}.*
+            from {}.{} as {}
+            where {}.OpenSession_PK = :pk
+            and {}.Name = :name
+            and {}.Active = 1
+            limit 1;",
+            Self::ALIAS,
+            Self::DB, Self::TABLE, Self::ALIAS,
+            Self::ALIAS,
+            Self::ALIAS,
+            Self::ALIAS,
+        );
+        let c = db.use_connection();
+        let mut stmt = match c.prepare(&sql) {
+            Ok(s) => s,
+            Err(e) => return Err(RustersError::SQLError(e)),
+        };
+        let cookies: Vec<Result<OpenSessionCookie, RusqliteError>> = match stmt.query_map(named_params!{ ":pk": session.get_id(), ":name": name, }, |row| {
+            Self::from_row(&row)
+        }) {
+            Ok(c) => c,
+            Err(e) => return Err(RustersError::SQLError(e)),
+        }.collect();
+        if cookies.len() == 0 {
+            return Ok(None);
+        }
+        let cookie_res = cookies.into_iter().nth(0).unwrap();
+        let cookie = cookie_res.unwrap();
+        return Ok(Some(cookie.value));
+    }
+    fn alerts<'a>(db: &mut impl DbCtx, session: &OpenSession) -> Result<Vec<Self>, RustersError> {
+        let sql = format!("
+            select {}.*
+            from {}.{} as {}
+            join {}.{} as {}
+            on {}.{} = {}.OpenSession_PK
+            and {}.{} = :session_pk
+            and {}.Active = 1
+            and {}.Name in ('success', 'error', 'alert');",
+            Self::ALIAS,
+            OpenSession::DB, OpenSession::TABLE, OpenSession::ALIAS,
+            Self::DB, Self::TABLE, Self::ALIAS,
+            OpenSession::ALIAS, OpenSession::PRIMARY_KEY, Self::ALIAS,
+            OpenSession::ALIAS, OpenSession::PRIMARY_KEY,
+            Self::ALIAS,
+            Self::ALIAS,
+        );
+        let c = db.use_connection();
+        let mut stmt = match c.prepare(&sql) {
+            Ok(s) => s,
+            Err(e) => return Err(RustersError::SQLError(e)),
+        };
+        let cookies: Vec<Result<OpenSessionCookie, RusqliteError>> = match stmt.query_map(named_params!{ ":session_pk": session.get_id(), }, |row| {
+            Self::from_row(&row)
+        }) {
+            Ok(c) => c,
+            Err(e) => return Err(RustersError::SQLError(e)),
+        }.collect();
+        if cookies.len() == 0 {
+            return Ok(Vec::new());
+        }
+        let mut alerts = Vec::new();
+        for cookie_res in cookies {
+            let c = match cookie_res {
+                Ok(c) => c,
+                Err(e) => return Err(RustersError::SQLError(e)),
+            };
+            alerts.push(c);
+        }
+        return Ok(alerts);
+    }
+    fn update<'a>(db: &mut impl DbCtx, session_hash: &'a str, name: &'a str, value: &'a str) {
+        let sql = format!("
+            update {}.{}
+            set Value = :value
+            from {}.{} as {}
+            join {}.{} as {}
+            on {}.PK = {}.OpenSession_PK
+            and {}.Hash = :hash
+            and {}.Name = :name
+            and {}.Active = 1
+            and {}.Expired_DT > :now;",
+            Self::DB, Self::TABLE,
+            OpenSession::DB, OpenSession::TABLE, OpenSession::ALIAS,
+            Self::DB, Self::TABLE, Self::ALIAS,
+            OpenSession::ALIAS, Self::ALIAS,
+            OpenSession::ALIAS,
+            Self::ALIAS,
+            Self::ALIAS,
+            OpenSession::ALIAS,
+        );
+        let c = db.use_connection();
+        c.execute(&sql, named_params!{ ":value": value, ":hash": session_hash, ":name": name, ":now": Utc::now(), }).unwrap();
+    }
+    fn delete<'a>(db: &mut impl DbCtx, session_hash: &'a str, name: &'a str) {
+        let sql = format!("
+            update {}.{}
+            set Active = 0
+            from {}.{} as {}
+            join {}.{} as {}
+            on {}.PK = {}.OpenSession_PK
+            and {}.Hash = :hash
+            and {}.Name = :name
+            and {}.Active = 1
+            and {}.Expired_DT > :now;",
+            Self::DB, Self::TABLE,
+            OpenSession::DB, OpenSession::TABLE, OpenSession::ALIAS,
+            Self::DB, Self::TABLE, Self::ALIAS,
+            OpenSession::ALIAS, Self::ALIAS,
+            OpenSession::ALIAS,
+            Self::ALIAS,
+            Self::ALIAS,
+            OpenSession::ALIAS,
+        );
+        let c = db.use_connection();
+        c.execute(&sql, named_params!{ ":hash": session_hash, ":name": name, ":now": Utc::now(), }).unwrap();
+    }
+    pub fn delete_self<'a>(&self, db: &mut impl DbCtx) -> Result<(), RustersError> {
+        let sql = format!("
+            update {}.{}
+            set Active = 0
+            where {}.{} = :id",
+            Self::DB, Self::TABLE,
+            Self::TABLE, Self::PRIMARY_KEY
+        );
+        let c = db.use_connection();
+        match c.execute(&sql, named_params!{ ":id": self.get_id(), }) {
+            Ok(_) => return Ok(()),
+            Err(e) => return Err(RustersError::SQLError(e)),
+        };
     }
 }
 #[derive(Worm)]
