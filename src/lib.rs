@@ -302,13 +302,13 @@ impl SessionCookie {
         let session = session_res.unwrap();
         return Ok(Self::read(db, &session, name)?);
     }
-    pub fn get_alerts<'a>(db: &mut impl DbCtx, session_hash: &'a str, name: &'a str) -> Result<Option<String>, RustersError> {
+    pub fn get_alerts<'a>(db: &mut impl DbCtx, session_hash: &'a str) -> Result<Option<String>, RustersError> {
         let session_res = Session::is_logged_in(db, session_hash)?;
         if session_res.is_none() {
             return Err(RustersError::NotLoggedInError);
         }
         let session = session_res.unwrap();
-        return Ok(Self::alerts(db, &session, name)?);
+        return Ok(Self::alerts(db, &session)?);
     }
     pub fn delete_cookie<'a>(db: &mut impl DbCtx, session_hash: &'a str, name: &'a str) -> Result<(), RustersError> {
         let session_res = Session::is_logged_in(db, session_hash)?;
@@ -350,7 +350,7 @@ impl SessionCookie {
         let cookie = cookie_res.unwrap();
         return Ok(Some(cookie.value));
     }
-    fn alerts<'a>(db: &mut impl DbCtx, session: &Session, name: &'a str) -> Result<Option<String>, RustersError> {
+    fn alerts<'a>(db: &mut impl DbCtx, session: &Session) -> Result<Option<String>, RustersError> {
         let sql = format!("
             select {}.*
             from {}.{} as {}
@@ -372,7 +372,7 @@ impl SessionCookie {
             Ok(s) => s,
             Err(e) => return Err(RustersError::SQLError(e)),
         };
-        let cookies: Vec<Result<SessionCookie, RusqliteError>> = match stmt.query_map(named_params!{ ":session_pk": session.get_id(), ":name": name, }, |row| {
+        let cookies: Vec<Result<SessionCookie, RusqliteError>> = match stmt.query_map(named_params!{ ":session_pk": session.get_id(), }, |row| {
             Self::from_row(&row)
         }) {
             Ok(c) => c,
