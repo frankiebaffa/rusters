@@ -215,6 +215,13 @@ pub struct OpenSession {
     expired_dt: DateTime<Utc>,
 }
 impl OpenSession {
+    pub fn create_new<'a>(db: &mut impl DbCtx) -> Result<OpenSession, RustersError> {
+        let hash = Hasher::get_open_session_hash()?;
+        return match OpenSession::insert_new(db, hash, Utc::now(), Utc::now() + Duration::hours(1)) {
+            Ok(s) => Ok(s),
+            Err(e) => Err(RustersError::SQLError(e)),
+        };
+    }
     pub fn get_active<'a>(db: &mut impl DbCtx, hash: &'a str) -> Result<Option<OpenSession>, RustersError> {
         let sql = format!("
             select {}.*
@@ -281,7 +288,7 @@ pub struct OpenSessionCookie {
 }
 impl OpenSessionCookie {
     pub fn create_or_update<'a>(db: &mut impl DbCtx, session_hash: &'a str, name: &'a str, value: &'a str) -> Result<(), RustersError> {
-        let session_res = OpenSession::is_logged_in(db, session_hash)?;
+        let session_res = OpenSession::get_active(db, session_hash)?;
         if session_res.is_none() {
             return Err(RustersError::NotLoggedInError);
         }
@@ -299,7 +306,7 @@ impl OpenSessionCookie {
         Ok(())
     }
     pub fn read_value<'a>(db: &mut impl DbCtx, session_hash: &'a str, name: &'a str) -> Result<Option<String>, RustersError> {
-        let session_res = OpenSession::is_logged_in(db, session_hash)?;
+        let session_res = OpenSession::get_active(db, session_hash)?;
         if session_res.is_none() {
             return Err(RustersError::NotLoggedInError);
         }
@@ -307,7 +314,7 @@ impl OpenSessionCookie {
         return Ok(Self::read(db, &session, name)?);
     }
     pub fn get_alerts<'a>(db: &mut impl DbCtx, session_hash: &'a str) -> Result<Vec<Self>, RustersError> {
-        let session_res = OpenSession::is_logged_in(db, session_hash)?;
+        let session_res = OpenSession::get_active(db, session_hash)?;
         if session_res.is_none() {
             return Err(RustersError::NotLoggedInError);
         }
@@ -315,7 +322,7 @@ impl OpenSessionCookie {
         return Ok(Self::alerts(db, &session)?);
     }
     pub fn delete_cookie<'a>(db: &mut impl DbCtx, session_hash: &'a str, name: &'a str) -> Result<(), RustersError> {
-        let session_res = OpenSession::is_logged_in(db, session_hash)?;
+        let session_res = OpenSession::get_active(db, session_hash)?;
         if session_res.is_none() {
             return Err(RustersError::NotLoggedInError);
         }
