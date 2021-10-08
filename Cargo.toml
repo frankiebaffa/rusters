@@ -36,6 +36,18 @@ path = "./src/bin/test_set_cookie.rs"
 name = "test_read_cookie"
 path = "./src/bin/test_read_cookie.rs"
 
+[[bin]]
+name = "test_delete_cookie"
+path = "./src/bin/test_delete_cookie.rs"
+
+[[bin]]
+name = "test_check_session"
+path = "./src/bin/test_check_session.rs"
+
+[[bin]]
+name = "test_create_session"
+path = "./src/bin/test_create_session.rs"
+
 [dependencies]
 base64 = "0.13"
 bcrypt = "0.10"
