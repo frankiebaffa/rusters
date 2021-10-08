@@ -231,7 +231,7 @@ impl Session {
             and {} = 1;",
             SessionCookie::DB, SessionCookie::TABLE,
             SessionCookie::ACTIVE,
-            SessionCookie::PRIMARY_KEY,
+            SessionCookie::FOREIGN_KEY,
             SessionCookie::ACTIVE,
             "Name",
         );
