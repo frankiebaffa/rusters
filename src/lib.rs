@@ -232,8 +232,8 @@ impl Session {
             SessionCookie::DB, SessionCookie::TABLE,
             SessionCookie::ACTIVE,
             SessionCookie::FOREIGN_KEY,
-            SessionCookie::ACTIVE,
             "Name",
+            SessionCookie::ACTIVE,
         );
         let c = db.use_connection();
         let aug = c.execute(&sql, named_params!{ ":fk": self.get_id(), ":name": name }).quick_match()?;

@@ -23,9 +23,20 @@ fn main() {
         Ok(s) => s,
         Err(e) => panic!("{}", e),
     };
-    match session.delete_cookie(&mut db, "Test") {
+    println!("Enter cookie name:");
+    let mut name = String::new();
+    match lock.read_line(&mut name) {
+        Ok(_) => {},
+        Err(e) => panic!("{}", e),
+    }
+    name = name.trim().to_string();
+    let deleted = match session.delete_cookie(&mut db, &name) {
         Ok(res) => res,
         Err(e) => panic!("{}", e),
     };
-    println!("Cookie deleted!");
+    if deleted {
+        println!("Cookie deleted!");
+    } else {
+        println!("Failed to delete");
+    }
 }

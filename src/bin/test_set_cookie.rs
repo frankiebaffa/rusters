@@ -19,11 +19,25 @@ fn main() {
         Err(e) => panic!("{}", e),
     }
     session_hash = session_hash.trim().to_string();
+    println!("Enter cookie name:");
+    let mut name = String::new();
+    match lock.read_line(&mut name) {
+        Ok(_) => {},
+        Err(e) => panic!("{}", e),
+    }
+    name = name.trim().to_string();
+    println!("Enter cookie value:");
+    let mut value = String::new();
+    match lock.read_line(&mut value) {
+        Ok(_) => {},
+        Err(e) => panic!("{}", e),
+    }
+    value = value.trim().to_string();
     let session = match Session::get_active(&mut db, &session_hash) {
         Ok(s) => s,
         Err(e) => panic!("{}", e),
     };
-    match session.set_cookie(&mut db, "Test", "Hello, World!") {
+    match session.set_cookie(&mut db, &name, &value) {
         Ok(_) => {},
         Err(e) => panic!("{}", e),
     }
