@@ -77,6 +77,33 @@ impl std::fmt::Display for RustersError {
     }
 }
 impl std::error::Error for RustersError {}
+pub trait MatchRustersError<T, U: std::error::Error>: Sized {
+    fn quick_match(self) -> Result<T, RustersError>;
+}
+impl<T> MatchRustersError<T, BcryptError> for Result<T, BcryptError> {
+    fn quick_match(self) -> Result<T, RustersError> {
+        return match self {
+            Ok(s) => Ok(s),
+            Err(e) => Err(RustersError::BcryptError(e)),
+        };
+    }
+}
+impl<T> MatchRustersError<T, rusqlite::Error> for Result<T, rusqlite::Error> {
+    fn quick_match(self) -> Result<T, RustersError> {
+        return match self {
+            Ok(s) => Ok(s),
+            Err(e) => Err(RustersError::SQLError(e)),
+        };
+    }
+}
+impl<T> MatchRustersError<T, std::io::Error> for Result<T, std::io::Error> {
+    fn quick_match(self) -> Result<T, RustersError> {
+        return match self {
+            Ok(s) => Ok(s),
+            Err(e) => Err(RustersError::IOError(e)),
+        };
+    }
+}
 struct Hashed {
     b64_hash: String,
     salt: String,
@@ -86,17 +113,11 @@ impl Hasher {
     const COST: u32 = DEFAULT_COST;
     const VERSION: Version = Version::TwoB;
     fn hash_password(pw: String) -> Result<Hashed, RustersError> {
-        let hash_parts = match hash_with_result(pw, Self::COST) {
-            Ok(h) => h,
-            Err(e) => return Err(RustersError::BcryptError(e)),
-        };
+        let hash_parts = hash_with_result(pw, Self::COST).quick_match()?;
         let salt = hash_parts.get_salt();
         let hash = hash_parts.format_for_version(Self::VERSION);
         let mut enc_write = EncoderStringWriter::new(URL_SAFE);
-        match enc_write.write_all(hash.as_bytes()) {
-            Ok(b) => b,
-            Err(e) => return Err(RustersError::IOError(e)),
-        }
+        enc_write.write_all(hash.as_bytes()).quick_match()?;
         let b64 = enc_write.into_inner();
         return Ok(Hashed { b64_hash: b64, salt, });
     }
@@ -104,27 +125,15 @@ impl Hasher {
         let mut cur = Cursor::new(stored_b64.as_bytes());
         let mut dec_read = DecoderReader::new(&mut cur, URL_SAFE);
         let mut stored_hash = String::new();
-        match dec_read.read_to_string(&mut stored_hash) {
-            Ok(_) => {},
-            Err(e) => return Err(RustersError::IOError(e)),
-        }
-        return match verify(input, &stored_hash) {
-            Ok(b) => Ok(b),
-            Err(e) => return Err(RustersError::BcryptError(e)),
-        };
+        dec_read.read_to_string(&mut stored_hash).quick_match()?;
+        return verify(input, &stored_hash).quick_match();
     }
     fn get_session_hash<'a>() -> Result<String, RustersError> {
         let now = Utc::now();
-        let hash_parts = match hash_with_result(format!("{}", now.format("%+")), Self::COST) {
-            Ok(hash_parts) => hash_parts,
-            Err(e) => return Err(RustersError::BcryptError(e)),
-        };
+        let hash_parts = hash_with_result(format!("{}", now.format("%+")), Self::COST).quick_match()?;
         let hash = hash_parts.format_for_version(Self::VERSION);
         let mut enc_write = EncoderStringWriter::new(URL_SAFE);
-        match enc_write.write_all(hash.as_bytes()) {
-            Ok(b) => b,
-            Err(e) => return Err(RustersError::IOError(e)),
-        }
+        enc_write.write_all(hash.as_bytes()).quick_match()?;
         let b64 = enc_write.into_inner();
         return Ok(b64);
     }
@@ -163,10 +172,7 @@ impl User {
         let salt = hashed.salt;
         let pw_hash = hashed.b64_hash;
         let now = Utc::now();
-        let user = match User::insert_new(db, username.to_owned(), pw_hash, salt, clearance.pk, now) {
-            Ok(user) => user,
-            Err(e) => return Err(RustersError::SQLError(e)),
-        };
+        let user = User::insert_new(db, username.to_owned(), pw_hash, salt, clearance.pk, now).quick_match()?;
         return Ok(user);
     }
 }
@@ -185,30 +191,8 @@ pub struct Session {
 impl Session {
     pub fn create_new(db: &mut impl DbCtx) -> Result<Session, RustersError> {
         let hash = Hasher::get_session_hash()?;
-        let session = match Session::insert_new(db, hash, Utc::now(), Utc::now() + Duration::hours(1)) {
-            Ok(s) => s,
-            Err(e) => return Err(RustersError::SQLError(e)),
-        };
+        let session = Session::insert_new(db, hash, Utc::now(), Utc::now() + Duration::hours(1)).quick_match()?;
         return Ok(session);
-    }
-    pub fn delete_cookie<'a>(&self, db: &mut impl DbCtx, name: &'a str, value: &'a str) -> Result<(), RustersError> {
-        let sql = format!("
-            update {}.{}
-            set {}.{} = 0
-            where {}.{} = :fk
-            and {}.{} = {}",
-            SessionCookie::DB, SessionCookie::ALIAS,
-            SessionCookie::ALIAS, SessionCookie::ACTIVE,
-            SessionCookie::ALIAS, SessionCookie::FOREIGN_KEY,
-            SessionCookie::ALIAS, "Name", name,
-        );
-    }
-    pub fn create_cookie<'a>(&self, db: &mut impl DbCtx, name: &'a str, value: &'a str) -> Result<SessionCookie, RustersError> {
-        let cookie = match SessionCookie::insert_new(db, self.get_id(), name.to_string(), value.to_string(), Utc::now()) {
-            Ok(c) => c,
-            Err(e) => return Err(RustersError::SQLError(e)),
-        };
-        return Ok(cookie);
     }
     pub fn get_active<'a>(db: &mut impl DbCtx, hash: &'a str) -> Result<Session, RustersError> {
         let sql = format!("
@@ -225,10 +209,7 @@ impl Session {
         let session;
         {
             let c = db.use_connection();
-            let mut stmt = match c.prepare(&sql) {
-                Ok(stmt) => stmt,
-                Err(e) => return Err(RustersError::SQLError(e)),
-            };
+            let mut stmt = c.prepare(&sql).quick_match()?;
             let now: DateTime<Utc> = Utc::now();
             session = match stmt.query_row(named_params!{ ":now": now, ":hash": hash, }, |row| {
                 Session::from_row(&row)
@@ -242,19 +223,59 @@ impl Session {
         return Ok(session);
     }
     const LOGIN_COOKIE: &'static str = "LOGIN";
-    pub fn read_cookie<'a>(&self, db: &mut impl DbCtx, name: &'a str) -> Result<Option<String>, RustersError> {
-        let cookies: Vec<SessionCookie> = match SessionCookie::get_all_by_fk(db, self) {
-            Ok(c) => c,
-            Err(e) => return Err(RustersError::SQLError(e)),
-        };
+    pub fn delete_cookie<'a>(&self, db: &mut impl DbCtx, name: &'a str) -> Result<(), RustersError> {
+        self.update_expired(db, Utc::now() + Duration::hours(1))?;
+        let sql = format!("
+            update {}.{}
+            set {}.{} = 0
+            where {}.{} = :fk
+            and {}.{} = {}",
+            SessionCookie::DB, SessionCookie::ALIAS,
+            SessionCookie::ALIAS, SessionCookie::ACTIVE,
+            SessionCookie::ALIAS, SessionCookie::FOREIGN_KEY,
+            SessionCookie::ALIAS, "Name", name,
+        );
+        let c = db.use_connection();
+        c.execute(&sql, named_params!{ ":fk": self.get_id() }).quick_match()?;
+        Ok(())
+    }
+    pub fn read_cookie<'a>(&self, db: &mut impl DbCtx, name: &'a str) -> Result<Option<SessionCookie>, RustersError> {
+        self.update_expired(db, Utc::now() + Duration::hours(1))?;
+        let cookies: Vec<SessionCookie> = SessionCookie::get_all_by_fk(db, self).quick_match()?;
         let cookie_opt: Option<SessionCookie> = cookies.into_iter().filter(|cookie| {
             cookie.get_active().eq(&true) && cookie.get_name().eq(name)
         }).nth(0);
         if cookie_opt.is_some() {
             let cookie = cookie_opt.unwrap();
-            return Ok(Some(cookie.get_value()));
+            return Ok(Some(cookie));
         } else {
             return Ok(None);
+        }
+    }
+    pub fn set_cookie<'a>(&self, db: &mut impl DbCtx, name: &'a str, value: &'a str) -> Result<SessionCookie, RustersError> {
+        self.update_expired(db, Utc::now() + Duration::hours(1))?;
+        let cookie = self.read_cookie(db, name)?;
+        if cookie.is_some() {
+            let old_cookie = cookie.unwrap();
+            let update = format!("
+                update {}.{}
+                set {} = 0
+                where {} = :id",
+                SessionCookie::DB, SessionCookie::TABLE,
+                SessionCookie::ACTIVE,
+                SessionCookie::PRIMARY_KEY,
+            );
+            {
+                let c = db.use_connection();
+                c.execute(&update, named_params!{ ":id": old_cookie.get_id() }).quick_match()?;
+            }
+            let new_cookie = SessionCookie::insert_new(db, self.get_id(), name.to_string(), value.to_string(), Utc::now()).quick_match()?;
+            return Ok(new_cookie);
+        } else {
+            return Ok(SessionCookie::insert_new(
+                db, self.get_id(), name.to_string(),
+                value.to_string(), Utc::now()
+            ).quick_match()?);
         }
     }
     pub fn is_logged_in<'s>(&self, db: &mut impl DbCtx) -> Result<Option<User>, RustersError> {
@@ -264,24 +285,18 @@ impl Session {
             return Ok(None);
         }
         let login_cookie = login_cookie_opt.unwrap();
-        let user = match User::get_by_name(db, &login_cookie) {
-            Ok(user) => user,
-            Err(e) => return Err(RustersError::SQLError(e)),
-        };
+        let user = User::get_by_name(db, &login_cookie.get_value()).quick_match()?;
         return Ok(Some(user));
     }
     pub fn login<'a>(&self, db: &mut impl DbCtx, username: &'a str, password: &'a str) -> Result<User, RustersError> {
         self.update_expired(db, Utc::now())?;
-        let user = match User::get_by_name(db, username) {
-            Ok(user) => user,
-            Err(e) => return Err(RustersError::SQLError(e)),
-        };
+        let user = User::get_by_name(db, username).quick_match()?;
         let stored_hash = user.get_password_hash();
         let verified = Hasher::verify(password, &stored_hash)?;
         if !verified {
             return Err(RustersError::InvalidCredentialsError);
         }
-        self.create_cookie(db, Session::LOGIN_COOKIE, &username)?;
+        self.set_cookie(db, Session::LOGIN_COOKIE, &username)?;
         return Ok(user);
     }
     pub fn log_out<'a>(&self, db: &mut impl DbCtx) -> Result<bool, RustersError> {
@@ -294,14 +309,8 @@ impl Session {
             Self::DB, Self::TABLE,
         );
         let c = db.use_connection();
-        let mut stmt = match c.prepare(&sql) {
-            Ok(stmt) => stmt,
-            Err(e) => return Err(RustersError::SQLError(e)),
-        };
-        match stmt.execute(named_params!{ ":dt": new_exp, ":pk": self.get_id() }) {
-            Ok(_) => {},
-            Err(e) => return Err(RustersError::SQLError(e)),
-        }
+        let mut stmt = c.prepare(&sql).quick_match()?;
+        stmt.execute(named_params!{ ":dt": new_exp, ":pk": self.get_id() }).quick_match()?;
         Ok(())
     }
 }

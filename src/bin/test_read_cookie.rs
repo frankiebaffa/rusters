@@ -30,6 +30,7 @@ fn main() {
     if cookie_res.is_none() {
         println!("No value for cookie");
     } else {
-        println!("Cookie found!\r\nvalue: {}", cookie_res.unwrap());
+        let cookie = cookie_res.unwrap();
+        println!("Cookie found!\r\nvalue: {}", cookie.get_value());
     }
 }

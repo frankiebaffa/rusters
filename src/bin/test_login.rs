@@ -1,4 +1,4 @@
-use rusters::{User, Session};
+use rusters::Session;
 use worm::{DbCtx, DbContext, traits::uniquename::UniqueName};
 use std::io::BufRead;
 use worm_derive::WormDb;
