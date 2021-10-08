@@ -27,9 +27,13 @@ fn main() {
         Ok(s) => s,
         Err(e) => panic!("{}", e),
     };
-    match session.log_out(&mut db) {
-        Ok(_) => {},
+    let out_res = match session.log_out(&mut db) {
+        Ok(r) => r,
         Err(e) => panic!("{}", e),
     };
-    println!("Logged out!");
+    if out_res {
+        println!("Logged out!");
+    } else {
+        println!("Was not logged in.");
+    }
 }
