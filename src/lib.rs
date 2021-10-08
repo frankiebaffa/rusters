@@ -31,9 +31,8 @@ use {
         activeflag::ActiveFlag,
         dbmodel::DbModel,
         dbctx::DbCtx,
+        foreignkey::ForeignKey,
         primarykey::PrimaryKey,
-        foreignkey::ForeignKeyModel,
-        uniquename::UniqueName,
         uniquename::UniqueNameModel,
     },
     worm_derive::Worm,
@@ -246,15 +245,28 @@ impl Session {
     }
     pub fn read_cookie<'a>(&self, db: &mut impl DbCtx, name: &'a str) -> Result<Option<SessionCookie>, RustersError> {
         self.update_expired(db, Utc::now() + Duration::hours(1))?;
-        let cookies: Vec<SessionCookie> = SessionCookie::get_all_by_fk(db, self).quick_match()?;
-        let cookie_opt: Option<SessionCookie> = cookies.into_iter().filter(|cookie| {
-            cookie.get_active().eq(&true) && cookie.get_name().eq(name)
-        }).nth(0);
-        if cookie_opt.is_some() {
-            let cookie = cookie_opt.unwrap();
-            return Ok(Some(cookie));
-        } else {
+        let sql = format!("
+            select {}.*
+            from {}.{} as {}
+            where {}.{} = :fk
+            and {}.{} = 1
+            and {}.Name = :name
+            limit 1;",
+            SessionCookie::ALIAS,
+            SessionCookie::DB, SessionCookie::TABLE, SessionCookie::ALIAS,
+            SessionCookie::ALIAS, SessionCookie::FOREIGN_KEY,
+            SessionCookie::ALIAS, SessionCookie::ACTIVE,
+            SessionCookie::ALIAS,
+        );
+        let c = db.use_connection();
+        let mut stmt = c.prepare(&sql).quick_match()?;
+        let cookies: Vec<Result<SessionCookie, rusqlite::Error>> = stmt.query_map(named_params!{ ":fk": self.get_id(), ":name": name }, |row| {
+            SessionCookie::from_row(&row)
+        }).quick_match()?.collect();
+        if cookies.len() == 0 {
             return Ok(None);
+        } else {
+            return Ok(Some(cookies.into_iter().nth(0).unwrap().quick_match()?));
         }
     }
     pub fn set_cookie<'a>(&self, db: &mut impl DbCtx, name: &'a str, value: &'a str) -> Result<SessionCookie, RustersError> {
