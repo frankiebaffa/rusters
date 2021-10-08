@@ -32,7 +32,6 @@ use {
         dbmodel::DbModel,
         dbctx::DbCtx,
         primarykey::PrimaryKey,
-        foreignkey::ForeignKey,
         foreignkey::ForeignKeyModel,
         uniquename::UniqueName,
         uniquename::UniqueNameModel,
@@ -223,21 +222,27 @@ impl Session {
         return Ok(session);
     }
     const LOGIN_COOKIE: &'static str = "LOGIN";
-    pub fn delete_cookie<'a>(&self, db: &mut impl DbCtx, name: &'a str) -> Result<(), RustersError> {
+    pub fn delete_cookie<'a>(&self, db: &mut impl DbCtx, name: &'a str) -> Result<bool, RustersError> {
         self.update_expired(db, Utc::now() + Duration::hours(1))?;
         let sql = format!("
             update {}.{}
-            set {}.{} = 0
-            where {}.{} = :fk
-            and {}.{} = {}",
-            SessionCookie::DB, SessionCookie::ALIAS,
-            SessionCookie::ALIAS, SessionCookie::ACTIVE,
-            SessionCookie::ALIAS, SessionCookie::FOREIGN_KEY,
-            SessionCookie::ALIAS, "Name", name,
+            set {} = 0
+            where {} = :fk
+            and {} = :name
+            and {} = 1;",
+            SessionCookie::DB, SessionCookie::TABLE,
+            SessionCookie::ACTIVE,
+            SessionCookie::PRIMARY_KEY,
+            SessionCookie::ACTIVE,
+            "Name",
         );
         let c = db.use_connection();
-        c.execute(&sql, named_params!{ ":fk": self.get_id() }).quick_match()?;
-        Ok(())
+        let aug = c.execute(&sql, named_params!{ ":fk": self.get_id(), ":name": name }).quick_match()?;
+        if aug > 0 {
+            return Ok(true);
+        } else {
+            return Ok(false);
+        }
     }
     pub fn read_cookie<'a>(&self, db: &mut impl DbCtx, name: &'a str) -> Result<Option<SessionCookie>, RustersError> {
         self.update_expired(db, Utc::now() + Duration::hours(1))?;
@@ -256,19 +261,7 @@ impl Session {
         self.update_expired(db, Utc::now() + Duration::hours(1))?;
         let cookie = self.read_cookie(db, name)?;
         if cookie.is_some() {
-            let old_cookie = cookie.unwrap();
-            let update = format!("
-                update {}.{}
-                set {} = 0
-                where {} = :id",
-                SessionCookie::DB, SessionCookie::TABLE,
-                SessionCookie::ACTIVE,
-                SessionCookie::PRIMARY_KEY,
-            );
-            {
-                let c = db.use_connection();
-                c.execute(&update, named_params!{ ":id": old_cookie.get_id() }).quick_match()?;
-            }
+            self.delete_cookie(db, name)?;
             let new_cookie = SessionCookie::insert_new(db, self.get_id(), name.to_string(), value.to_string(), Utc::now()).quick_match()?;
             return Ok(new_cookie);
         } else {
@@ -300,8 +293,12 @@ impl Session {
         return Ok(user);
     }
     pub fn log_out<'a>(&self, db: &mut impl DbCtx) -> Result<bool, RustersError> {
-        self.update_expired(db, Utc::now())?;
-        return Ok(true);
+        let user_opt = self.is_logged_in(db)?;
+        if user_opt.is_some() {
+            return Ok(self.delete_cookie(db, Self::LOGIN_COOKIE)?);
+        } else {
+            return Ok(false);
+        }
     }
     fn update_expired(&self, db: &mut impl DbCtx, new_exp: DateTime<Utc>) -> Result<(), RustersError> {
         let sql = format!(
