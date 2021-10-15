@@ -4,9 +4,9 @@ version = 3
 
 [[package]]
 name = "ahash"
-version = "0.7.4"
+version = "0.7.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "43bb833f0bf979d8475d38fbf09ed3b8a55e1885fe93ad3f93239fc6a4f17b98"
+checksum = "fcb51a0695d8f838b1ee009b3fbf66bda078cd64590202a864a8f3e8c4315c47"
 dependencies = [
  "getrandom",
  "once_cell",
@@ -281,8 +281,8 @@ dependencies = [
  "rusqlite",
  "serde",
  "serde_yaml",
- "worm",
- "worm_derive",
+ "worm 0.1.0 (git+https://github.com/frankiebaffa/worm?branch=master)",
+ "worm_derive 0.1.0 (git+https://github.com/frankiebaffa/worm_derive?branch=master)",
 ]
 
 [[package]]
@@ -324,9 +324,9 @@ checksum = "7c9b1041b4387893b91ee6746cddfc28516aff326a3519fb2adf820932c5e6cb"
 
 [[package]]
 name = "proc-macro2"
-version = "1.0.29"
+version = "1.0.30"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b9f5105d4fdaab20335ca9565e106a5d9b82b6219b5ba735731124ac6711d23d"
+checksum = "edc3358ebc67bc8b7fa0c007f945b0b18226f78437d61bec735a9eb96b61ee70"
 dependencies = [
  "unicode-xid",
 ]
@@ -367,8 +367,8 @@ dependencies = [
  "migaton",
  "rusqlite",
  "sha3",
- "worm",
- "worm_derive",
+ "worm 0.1.0 (git+https://github.com/frankiebaffa/worm?branch=implement_builder)",
+ "worm_derive 0.1.0 (git+https://github.com/frankiebaffa/worm_derive?branch=implement_builder)",
 ]
 
 [[package]]
@@ -503,6 +503,14 @@ checksum = "712e227841d057c1ee1cd2fb22fa7e5a5461ae8e48fa2ca79ec42cfc1931183f"
 [[package]]
 name = "worm"
 version = "0.1.0"
+source = "git+https://github.com/frankiebaffa/worm?branch=implement_builder#57991d6b536849c03d34203f960fb00b6de438a5"
+dependencies = [
+ "rusqlite",
+]
+
+[[package]]
+name = "worm"
+version = "0.1.0"
 source = "git+https://github.com/frankiebaffa/worm?branch=master#52122f3f9d8652c03e49528d8e9230b51a9e0eb4"
 dependencies = [
  "rusqlite",
@@ -511,14 +519,27 @@ dependencies = [
 [[package]]
 name = "worm_derive"
 version = "0.1.0"
-source = "git+https://github.com/frankiebaffa/worm_derive?branch=master#fd97de69a135443315637b1ae056e40867a99253"
+source = "git+https://github.com/frankiebaffa/worm_derive?branch=implement_builder#fa513dd7dd0e9a081dee0bfb34508fe964bcd0eb"
 dependencies = [
  "darling",
  "dotenv",
  "quote",
  "rusqlite",
  "syn",
- "worm",
+ "worm 0.1.0 (git+https://github.com/frankiebaffa/worm?branch=implement_builder)",
+]
+
+[[package]]
+name = "worm_derive"
+version = "0.1.0"
+source = "git+https://github.com/frankiebaffa/worm_derive?branch=master#57d1061c10a1de515589dd5030795aca05ab601a"
+dependencies = [
+ "darling",
+ "dotenv",
+ "quote",
+ "rusqlite",
+ "syn",
+ "worm 0.1.0 (git+https://github.com/frankiebaffa/worm?branch=master)",
 ]
 
 [[package]]

@@ -17,23 +17,23 @@ use {
         Utc,
     },
     migaton::Migrator,
-    rusqlite::{
-        Error as RusqliteError,
-        named_params,
-    },
+    rusqlite::Error as RusqliteError,
     std::io::{
         Cursor,
         Error as IOError,
         Read,
         Write,
     },
-    worm::traits::{
-        activeflag::ActiveFlag,
-        dbmodel::DbModel,
-        dbctx::DbCtx,
-        foreignkey::ForeignKey,
-        primarykey::PrimaryKey,
-        uniquename::UniqueNameModel,
+    worm::{
+        builder::{
+            Query,
+            WormError,
+        },
+        traits::{
+            dbctx::DbCtx,
+            primarykey::PrimaryKey,
+            uniquename::UniqueNameModel,
+        },
     },
     worm_derive::Worm,
 };
@@ -46,6 +46,7 @@ pub enum RustersError {
     NotLoggedInError,
     SQLError(RusqliteError),
     NoSessionError,
+    WormError(WormError),
 }
 impl std::fmt::Display for RustersError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -70,7 +71,11 @@ impl std::fmt::Display for RustersError {
             },
             RustersError::NoSessionError => {
                 f.write_str("The session is expired or does not exist")
-            }
+            },
+            RustersError::WormError(e) => {
+                let msg = &format!("{}", e);
+                f.write_str(msg)
+            },
         }
     }
 }
@@ -99,6 +104,14 @@ impl<T> MatchRustersError<T, std::io::Error> for Result<T, std::io::Error> {
         return match self {
             Ok(s) => Ok(s),
             Err(e) => Err(RustersError::IOError(e)),
+        };
+    }
+}
+impl<T> MatchRustersError<T, WormError> for Result<T, WormError> {
+    fn quick_match(self) -> Result<T, RustersError> {
+        return match self {
+            Ok(s) => Ok(s),
+            Err(e) => Err(RustersError::WormError(e)),
         };
     }
 }
@@ -193,29 +206,12 @@ impl Session {
         return Ok(session);
     }
     pub fn get_active<'a>(db: &mut impl DbCtx, hash: &'a str) -> Result<Session, RustersError> {
-        let sql = format!("
-            select {}.*
-            from {}.{} as {}
-            where {}.Expired_DT > :now
-            and {}.Hash = :hash
-            limit 1;",
-            Self::ALIAS,
-            Self::DB, Self::TABLE, Self::ALIAS,
-            Self::ALIAS,
-            Self::ALIAS,
-        );
-        let session;
-        {
-            let c = db.use_connection();
-            let mut stmt = c.prepare(&sql).quick_match()?;
-            let now: DateTime<Utc> = Utc::now();
-            session = match stmt.query_row(named_params!{ ":now": now, ":hash": hash, }, |row| {
-                Session::from_row(&row)
-            }) {
-                Ok(s) => s,
-                Err(_) => return Err(RustersError::NoSessionError),
-            };
-        }
+        let now: DateTime<Utc> = Utc::now();
+        let session = Query::<Session>::select()
+            .where_gt(Session::EXPIRED_DT, &now).and()
+            .where_eq(Session::HASH, &hash)
+            .execute_row(db)
+            .quick_match()?;
         let exp: DateTime<Utc> = Utc::now() + Duration::hours(1);
         session.update_expired(db, exp)?;
         return Ok(session);
@@ -223,21 +219,14 @@ impl Session {
     const LOGIN_COOKIE: &'static str = "LOGIN";
     pub fn delete_cookie<'a>(&self, db: &mut impl DbCtx, name: &'a str) -> Result<bool, RustersError> {
         self.update_expired(db, Utc::now() + Duration::hours(1))?;
-        let sql = format!("
-            update {}.{}
-            set {} = 0
-            where {} = :fk
-            and {} = :name
-            and {} = 1;",
-            SessionCookie::DB, SessionCookie::TABLE,
-            SessionCookie::ACTIVE,
-            SessionCookie::FOREIGN_KEY,
-            "Name",
-            SessionCookie::ACTIVE,
-        );
-        let c = db.use_connection();
-        let aug = c.execute(&sql, named_params!{ ":fk": self.get_id(), ":name": name }).quick_match()?;
-        if aug > 0 {
+        let aug = Query::<SessionCookie>::update()
+            .set(SessionCookie::ACTIVE, &0)
+            .where_eq(SessionCookie::SESSION_PK, &self.pk).and()
+            .where_eq(SessionCookie::NAME, &name).and()
+            .where_eq(SessionCookie::ACTIVE, &1)
+            .execute(db)
+            .quick_match()?;
+        if aug.len() == 0 {
             return Ok(true);
         } else {
             return Ok(false);
@@ -245,28 +234,16 @@ impl Session {
     }
     pub fn read_cookie<'a>(&self, db: &mut impl DbCtx, name: &'a str) -> Result<Option<SessionCookie>, RustersError> {
         self.update_expired(db, Utc::now() + Duration::hours(1))?;
-        let sql = format!("
-            select {}.*
-            from {}.{} as {}
-            where {}.{} = :fk
-            and {}.{} = 1
-            and {}.Name = :name
-            limit 1;",
-            SessionCookie::ALIAS,
-            SessionCookie::DB, SessionCookie::TABLE, SessionCookie::ALIAS,
-            SessionCookie::ALIAS, SessionCookie::FOREIGN_KEY,
-            SessionCookie::ALIAS, SessionCookie::ACTIVE,
-            SessionCookie::ALIAS,
-        );
-        let c = db.use_connection();
-        let mut stmt = c.prepare(&sql).quick_match()?;
-        let cookies: Vec<Result<SessionCookie, rusqlite::Error>> = stmt.query_map(named_params!{ ":fk": self.get_id(), ":name": name }, |row| {
-            SessionCookie::from_row(&row)
-        }).quick_match()?.collect();
-        if cookies.len() == 0 {
-            return Ok(None);
-        } else {
-            return Ok(Some(cookies.into_iter().nth(0).unwrap().quick_match()?));
+        let cookie_res = Query::<SessionCookie>::select()
+            .where_eq(SessionCookie::SESSION_PK, &self.get_id()).and()
+            .where_eq(SessionCookie::NAME, &name)
+            .execute_row(db);
+        match cookie_res {
+            Ok(c) => return Ok(Some(c)),
+            Err(e) => return match e {
+                WormError::NoRowsError => Ok(None),
+                _ => Err(e).quick_match()?,
+            },
         }
     }
     pub fn set_cookie<'a>(&self, db: &mut impl DbCtx, name: &'a str, value: &'a str) -> Result<SessionCookie, RustersError> {
@@ -313,13 +290,11 @@ impl Session {
         }
     }
     fn update_expired(&self, db: &mut impl DbCtx, new_exp: DateTime<Utc>) -> Result<(), RustersError> {
-        let sql = format!(
-            "update {}.{} set Expired_DT = :dt where PK = :pk",
-            Self::DB, Self::TABLE,
-        );
-        let c = db.use_connection();
-        let mut stmt = c.prepare(&sql).quick_match()?;
-        stmt.execute(named_params!{ ":dt": new_exp, ":pk": self.get_id() }).quick_match()?;
+        Query::<Session>::update()
+            .set(Session::EXPIRED_DT, &new_exp)
+            .where_eq(Session::PK, &self.pk)
+            .execute_row(db)
+            .quick_match()?;
         Ok(())
     }
 }
