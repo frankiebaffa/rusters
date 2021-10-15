@@ -56,6 +56,6 @@ dotenv = "0.15"
 migaton = { git = "https://github.com/frankiebaffa/migaton", branch = "master" }
 rusqlite = { version = "0.25", features = ["bundled"] }
 sha3 = "0.9"
-worm = { git = "https://github.com/frankiebaffa/worm", branch = "implement_builder" }
-worm_derive = { git = "https://github.com/frankiebaffa/worm_derive", branch = "implement_builder" }
+worm = { git = "https://github.com/frankiebaffa/worm", branch = "master" }
+worm_derive = { git = "https://github.com/frankiebaffa/worm_derive", branch = "master" }
 
