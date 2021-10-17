@@ -236,7 +236,8 @@ impl Session {
         self.update_expired(db, Utc::now() + Duration::hours(1))?;
         let cookie_res = Query::<SessionCookie>::select()
             .where_eq(SessionCookie::SESSION_PK, &self.get_id()).and()
-            .where_eq(SessionCookie::NAME, &name)
+            .where_eq(SessionCookie::NAME, &name).and()
+            .where_eq(SessionCookie::ACTIVE, &1)
             .execute_row(db);
         match cookie_res {
             Ok(c) => return Ok(Some(c)),
