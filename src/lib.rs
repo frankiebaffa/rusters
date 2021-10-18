@@ -292,9 +292,6 @@ impl Session {
         let query = Query::<Session>::update()
             .set(Session::EXPIRED_DT, &new_exp)
             .where_eq(Session::PK, &self.pk);
-        println!("{}", query.query_to_string());
-        println!("{}", &new_exp);
-        println!("{}", &self.pk);
         let aug = query
             .execute_update(db)
             .quick_match()?;
