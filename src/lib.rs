@@ -11,6 +11,10 @@ use {
         verify,
         Version,
     },
+    buildlite::{
+        BuildliteError,
+        Query,
+    },
     chrono::{
         DateTime,
         Duration,
@@ -24,16 +28,10 @@ use {
         Read,
         Write,
     },
-    worm::{
-        builder::{
-            Query,
-            WormError,
-        },
-        traits::{
-            dbctx::DbCtx,
-            primarykey::PrimaryKey,
-            uniquename::UniqueNameModel,
-        },
+    worm::traits::{
+        dbctx::DbCtx,
+        primarykey::PrimaryKey,
+        uniquename::UniqueNameModel,
     },
     worm_derive::Worm,
 };
@@ -46,7 +44,7 @@ pub enum RustersError {
     NotLoggedInError,
     SQLError(RusqliteError),
     NoSessionError,
-    WormError(WormError),
+    BuildliteError(BuildliteError),
 }
 impl std::fmt::Display for RustersError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -72,7 +70,7 @@ impl std::fmt::Display for RustersError {
             RustersError::NoSessionError => {
                 f.write_str("The session is expired or does not exist")
             },
-            RustersError::WormError(e) => {
+            RustersError::BuildliteError(e) => {
                 let msg = &format!("{}", e);
                 f.write_str(msg)
             },
@@ -107,11 +105,11 @@ impl<T> MatchRustersError<T, std::io::Error> for Result<T, std::io::Error> {
         };
     }
 }
-impl<T> MatchRustersError<T, WormError> for Result<T, WormError> {
+impl<T> MatchRustersError<T, BuildliteError> for Result<T, BuildliteError> {
     fn quick_match(self) -> Result<T, RustersError> {
         return match self {
             Ok(s) => Ok(s),
-            Err(e) => Err(RustersError::WormError(e)),
+            Err(e) => Err(RustersError::BuildliteError(e)),
         };
     }
 }
@@ -224,9 +222,9 @@ impl Session {
             .where_eq(SessionCookie::SESSION_PK, &self.pk).and()
             .where_eq(SessionCookie::NAME, &name).and()
             .where_eq(SessionCookie::ACTIVE, &1)
-            .execute(db)
+            .execute_update(db)
             .quick_match()?;
-        if aug.len() == 0 {
+        if aug > 0 {
             return Ok(true);
         } else {
             return Ok(false);
@@ -241,7 +239,7 @@ impl Session {
         match cookie_res {
             Ok(c) => return Ok(Some(c)),
             Err(e) => return match e {
-                WormError::NoRowsError => Ok(None),
+                BuildliteError::NoRowsError => Ok(None),
                 _ => Err(e).quick_match()?,
             },
         }
@@ -289,13 +287,23 @@ impl Session {
             return Ok(false);
         }
     }
-    fn update_expired(&self, db: &mut impl DbCtx, new_exp: DateTime<Utc>) -> Result<(), RustersError> {
-        Query::<Session>::update()
+    fn update_expired(&self, db: &mut impl DbCtx, new_exp: DateTime<Utc>) -> Result<bool, RustersError> {
+        let query = Query::<Session>::update()
             .set(Session::EXPIRED_DT, &new_exp)
-            .where_eq(Session::PK, &self.pk)
-            .execute_row(db)
+            .where_eq(Session::PK, &self.pk);
+        println!("{}", query.query_to_string());
+        println!("{}", &new_exp);
+        println!("{}", &self.pk);
+        let aug = query
+            .execute_update(db)
             .quick_match()?;
-        Ok(())
+        if aug == 1 {
+            return Ok(true);
+        } else if aug > 1 {
+            panic!("More than one row updated");
+        } else {
+            return Ok(false);
+        }
     }
 }
 #[derive(Worm)]
@@ -336,4 +344,3 @@ impl Migrations {
         return skips;
     }
 }
-
