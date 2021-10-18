@@ -17,40 +17,41 @@ name = "create_user"
 path = "./src/bin/create_user.rs"
 
 [[bin]]
-name = "test_login"
+name = "login"
 path = "./src/bin/test_login.rs"
 
 [[bin]]
-name = "test_logout"
+name = "logout"
 path = "./src/bin/test_logout.rs"
 
 [[bin]]
-name = "test_is_logged_in"
+name = "is_logged_in"
 path = "./src/bin/test_is_logged_in.rs"
 
 [[bin]]
-name = "test_set_cookie"
+name = "set_cookie"
 path = "./src/bin/test_set_cookie.rs"
 
 [[bin]]
-name = "test_read_cookie"
+name = "read_cookie"
 path = "./src/bin/test_read_cookie.rs"
 
 [[bin]]
-name = "test_delete_cookie"
+name = "delete_cookie"
 path = "./src/bin/test_delete_cookie.rs"
 
 [[bin]]
-name = "test_check_session"
+name = "check_session"
 path = "./src/bin/test_check_session.rs"
 
 [[bin]]
-name = "test_create_session"
+name = "create_session"
 path = "./src/bin/test_create_session.rs"
 
 [dependencies]
 base64 = "0.13"
 bcrypt = "0.10"
+buildlite = { git = "https://github.com/frankiebaffa/buildlite", branch = "master" }
 chrono = "0.4"
 dotenv = "0.15"
 migaton = { git = "https://github.com/frankiebaffa/migaton", branch = "master" }
