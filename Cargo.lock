@@ -70,6 +70,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "buildlite"
+version = "0.1.0"
+source = "git+https://github.com/frankiebaffa/buildlite?branch=master#b545c9ea8371088aae9ef33d2cace895e20c11a7"
+dependencies = [
+ "chrono",
+ "rusqlite",
+ "worm",
+ "worm_derive",
+]
+
+[[package]]
 name = "byteorder"
 version = "1.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -96,6 +107,7 @@ dependencies = [
  "libc",
  "num-integer",
  "num-traits",
+ "serde",
  "time",
  "winapi",
 ]
@@ -246,9 +258,9 @@ checksum = "67c21572b4949434e4fc1e1978b99c5f77064153c59d998bf13ecd96fb5ecba7"
 
 [[package]]
 name = "libc"
-version = "0.2.103"
+version = "0.2.104"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dd8f7255a17a627354f321ef0055d63b898c6fb27eff628af4d1b66b7331edf6"
+checksum = "7b2f96d100e1cf1929e7719b7edb3b90ab5298072638fccd77be9ce942ecdfce"
 
 [[package]]
 name = "libsqlite3-sys"
@@ -362,6 +374,7 @@ version = "0.1.0"
 dependencies = [
  "base64",
  "bcrypt",
+ "buildlite",
  "chrono",
  "dotenv",
  "migaton",
@@ -503,7 +516,7 @@ checksum = "712e227841d057c1ee1cd2fb22fa7e5a5461ae8e48fa2ca79ec42cfc1931183f"
 [[package]]
 name = "worm"
 version = "0.1.0"
-source = "git+https://github.com/frankiebaffa/worm?branch=master#189cbefd01c5733c7ba49df59d51d9232fedf989"
+source = "git+https://github.com/frankiebaffa/worm?branch=master#8ccea613e5b38186b83c77f88c9f6affc311e375"
 dependencies = [
  "rusqlite",
 ]
