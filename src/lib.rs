@@ -206,8 +206,8 @@ impl Session {
     pub fn get_active<'a>(db: &mut impl DbCtx, hash: &'a str) -> Result<Session, RustersError> {
         let now: DateTime<Utc> = Utc::now();
         let session = Query::<Session>::select()
-            .where_gt(Session::EXPIRED_DT, &now).and()
-            .where_eq(Session::HASH, &hash)
+            .where_gt::<Session>(Session::EXPIRED_DT, &now).and()
+            .where_eq::<Session>(Session::HASH, &hash)
             .execute_row(db)
             .quick_match()?;
         let exp: DateTime<Utc> = Utc::now() + Duration::hours(1);
@@ -219,9 +219,9 @@ impl Session {
         self.update_expired(db, Utc::now() + Duration::hours(1))?;
         let aug = Query::<SessionCookie>::update()
             .set(SessionCookie::ACTIVE, &0)
-            .where_eq(SessionCookie::SESSION_PK, &self.pk).and()
-            .where_eq(SessionCookie::NAME, &name).and()
-            .where_eq(SessionCookie::ACTIVE, &1)
+            .where_eq::<SessionCookie>(SessionCookie::SESSION_PK, &self.pk).and()
+            .where_eq::<SessionCookie>(SessionCookie::NAME, &name).and()
+            .where_eq::<SessionCookie>(SessionCookie::ACTIVE, &1)
             .execute_update(db)
             .quick_match()?;
         if aug > 0 {
@@ -233,9 +233,9 @@ impl Session {
     pub fn read_cookie<'a>(&self, db: &mut impl DbCtx, name: &'a str) -> Result<Option<SessionCookie>, RustersError> {
         self.update_expired(db, Utc::now() + Duration::hours(1))?;
         let cookie_res = Query::<SessionCookie>::select()
-            .where_eq(SessionCookie::SESSION_PK, &self.get_id()).and()
-            .where_eq(SessionCookie::NAME, &name).and()
-            .where_eq(SessionCookie::ACTIVE, &1)
+            .where_eq::<SessionCookie>(SessionCookie::SESSION_PK, &self.get_id()).and()
+            .where_eq::<SessionCookie>(SessionCookie::NAME, &name).and()
+            .where_eq::<SessionCookie>(SessionCookie::ACTIVE, &1)
             .execute_row(db);
         match cookie_res {
             Ok(c) => return Ok(Some(c)),
@@ -291,7 +291,7 @@ impl Session {
     fn update_expired(&self, db: &mut impl DbCtx, new_exp: DateTime<Utc>) -> Result<bool, RustersError> {
         let query = Query::<Session>::update()
             .set(Session::EXPIRED_DT, &new_exp)
-            .where_eq(Session::PK, &self.pk);
+            .where_eq::<Session>(Session::PK, &self.pk);
         let aug = query
             .execute_update(db)
             .quick_match()?;

@@ -72,7 +72,7 @@ dependencies = [
 [[package]]
 name = "buildlite"
 version = "0.1.0"
-source = "git+https://github.com/frankiebaffa/buildlite?branch=master#b545c9ea8371088aae9ef33d2cace895e20c11a7"
+source = "git+https://github.com/frankiebaffa/buildlite?branch=master#e5730517bdfaed65dba5eb76cc682a2fdc675c72"
 dependencies = [
  "chrono",
  "rusqlite",
@@ -516,7 +516,7 @@ checksum = "712e227841d057c1ee1cd2fb22fa7e5a5461ae8e48fa2ca79ec42cfc1931183f"
 [[package]]
 name = "worm"
 version = "0.1.0"
-source = "git+https://github.com/frankiebaffa/worm?branch=master#8ccea613e5b38186b83c77f88c9f6affc311e375"
+source = "git+https://github.com/frankiebaffa/worm?branch=master#634f0fbffabe9b4a42bb1802e68cabe2f52164c6"
 dependencies = [
  "rusqlite",
 ]
