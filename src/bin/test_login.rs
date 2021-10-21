@@ -25,15 +25,6 @@ fn main() {
         Ok(s) => s,
         Err(e) => panic!("{}", e),
     };
-    let hash = match session.get_hash(&mut db) {
-        Ok(h) => h,
-        Err(e) => panic!("{}", e),
-    };
-    if session_hash.eq(&hash) {
-        println!("Resumed session: {}", &hash);
-    } else {
-        println!("New session: {}", &hash);
-    }
     let user_opt = match session.is_logged_in(&mut db) {
         Ok(u) => u,
         Err(e) => panic!("{}", e),
@@ -67,5 +58,5 @@ fn main() {
         Ok(u) => u,
         Err(e) => panic!("{}", e),
     };
-    println!("Logged in user\r\nusername: {}\r\nsession hash: {}", user.get_name(), &hash);
+    println!("Logged in user\r\nusername: {}\r\nsession hash: {}", user.get_name(), &session_hash);
 }

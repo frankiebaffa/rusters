@@ -254,10 +254,10 @@ pub struct Session {
     created_dt: DateTime<Utc>,
 }
 impl Session {
-    pub fn create_new(db: &mut impl DbCtx) -> Result<Session, RustersError> {
+    pub fn create_new(db: &mut impl DbCtx) -> Result<(Session, String), RustersError> {
         let token = Token::generate_for_new_session(db)?;
         let session = Session::insert_new(db, token.get_id(), Utc::now()).quick_match()?;
-        return Ok(session);
+        return Ok((session, token.get_hash()));
     }
     pub fn get_active<'a>(db: &mut impl DbCtx, hash: &'a str) -> Result<Session, RustersError> {
         let now: DateTime<Utc> = Utc::now();
