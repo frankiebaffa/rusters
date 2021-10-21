@@ -211,6 +211,38 @@ pub struct Token {
     #[dbcolumn(column(name="Expired_DT", insertable))]
     expired_dt: DateTime<Utc>,
 }
+impl Token {
+    pub fn generate_for_new_user(
+        db: &mut impl DbCtx
+    ) -> Result<Token, RustersError> {
+        let hash = Hasher::get_token_hash()?;
+        let token_type = Query::<TokenType>::select()
+            .where_eq::<TokenType>(TokenType::NAME, &"CreateUser")
+            .execute_row(db)
+            .quick_match()?;
+        return Token::insert_new(
+            db,
+            token_type.get_id(),
+            hash, Utc::now(),
+            Utc::now() + Duration::days(1)
+        ).quick_match();
+    }
+    pub fn generate_for_new_session(
+        db: &mut impl DbCtx
+    ) -> Result<Token, RustersError> {
+        let hash = Hasher::get_token_hash()?;
+        let token_type = Query::<TokenType>::select()
+            .where_eq::<TokenType>(TokenType::NAME, &"Session")
+            .execute_row(db)
+            .quick_match()?;
+        return Token::insert_new(
+            db,
+            token_type.get_id(),
+            hash, Utc::now(),
+            Utc::now() + Duration::days(1)
+        ).quick_match();
+    }
+}
 #[derive(Worm)]
 #[dbmodel(table(schema="RustersDb", name="Sessions", alias="session"))]
 pub struct Session {
@@ -223,13 +255,7 @@ pub struct Session {
 }
 impl Session {
     pub fn create_new(db: &mut impl DbCtx) -> Result<Session, RustersError> {
-        let hash = Hasher::get_token_hash()?;
-        let token_type = Query::<TokenType>::select()
-            .where_eq::<TokenType>(TokenType::NAME, &"Session")
-            .execute_row(db).quick_match()?;
-        let token = Token::insert_new(
-            db, token_type.get_id(), hash, Utc::now(), Utc::now() + Duration::hours(1),
-        ).quick_match()?;
+        let token = Token::generate_for_new_session(db)?;
         let session = Session::insert_new(db, token.get_id(), Utc::now()).quick_match()?;
         return Ok(session);
     }
