@@ -72,7 +72,7 @@ dependencies = [
 [[package]]
 name = "buildlite"
 version = "0.1.0"
-source = "git+https://github.com/frankiebaffa/buildlite?branch=master#e5730517bdfaed65dba5eb76cc682a2fdc675c72"
+source = "git+https://github.com/frankiebaffa/buildlite?branch=master#c7c84d9e46dac2999ec21a9f17c66f140a6de541"
 dependencies = [
  "chrono",
  "rusqlite",
@@ -288,7 +288,7 @@ checksum = "308cc39be01b73d0d18f82a0e7b2a3df85245f84af96fdddc5d202d27e47b86a"
 [[package]]
 name = "migaton"
 version = "0.1.0"
-source = "git+https://github.com/frankiebaffa/migaton?branch=master#47bf2484bb96cc285cd957f79a1b89f449bc69e3"
+source = "git+https://github.com/frankiebaffa/migaton?branch=master#e90d97481aa7cae4b99ada25e4b5dcfc614f9588"
 dependencies = [
  "rusqlite",
  "serde",
@@ -516,7 +516,7 @@ checksum = "712e227841d057c1ee1cd2fb22fa7e5a5461ae8e48fa2ca79ec42cfc1931183f"
 [[package]]
 name = "worm"
 version = "0.1.0"
-source = "git+https://github.com/frankiebaffa/worm?branch=master#8200656c84d3cc4c5f196240e97ff4d0dcb87c88"
+source = "git+https://github.com/frankiebaffa/worm?branch=master#32d24accab73a48ddccddbf7336d60a98adcaff0"
 dependencies = [
  "rusqlite",
 ]
