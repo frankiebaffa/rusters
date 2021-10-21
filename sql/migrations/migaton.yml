@@ -5,8 +5,10 @@ ordering: [
   ins_clearances_items,
   tbl_users,
   idx_usersuniquename,
+  tbl_token_types,
+  ins_token_types,
+  tbl_tokens,
   tbl_sessions,
-  idx_sessionsuniquehash,
   tbl_sessioncookies,
   idx_sessioncookiesuniquename,
 ]
