@@ -1,6 +1,11 @@
-use rusters::Session;
-use worm::{DbCtx, DbContext};
-use worm_derive::WormDb;
+use {
+    rusters::Session,
+    worm::{
+        DbCtx,
+        DbContext,
+    },
+    worm_derive::WormDb,
+};
 #[derive(WormDb)]
 #[db(var(name="RUSTERSDBS"))]
 struct Database {
@@ -22,7 +27,11 @@ fn main() {
         Ok(s) => s,
         Err(e) => panic!("{}", e),
     };
-    if session_hash.eq(&session.get_hash()) {
+    let hash = match session.get_hash(&mut db) {
+        Ok(h) => h,
+        Err(e) => panic!("{}", e),
+    };
+    if session_hash.eq(&hash) {
         println!("Resumed session!")
     } else {
         println!("Error, created new session");

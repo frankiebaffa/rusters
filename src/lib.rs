@@ -137,7 +137,7 @@ impl Hasher {
         dec_read.read_to_string(&mut stored_hash).quick_match()?;
         return verify(input, &stored_hash).quick_match();
     }
-    fn get_session_hash<'a>() -> Result<String, RustersError> {
+    fn get_token_hash<'a>() -> Result<String, RustersError> {
         let now = Utc::now();
         let hash_parts = hash_with_result(format!("{}", now.format("%+")), Self::COST).quick_match()?;
         let hash = hash_parts.format_for_version(Self::VERSION);
@@ -186,10 +186,24 @@ impl User {
     }
 }
 #[derive(Worm)]
-#[dbmodel(table(schema="RustersDb", name="Sessions", alias="session"))]
-pub struct Session {
+#[dbmodel(table(schema="RustersDb", name="TokenTypes", alias="tokentypes"))]
+pub struct TokenType {
     #[dbcolumn(column(name="PK", primary_key))]
     pk: i64,
+    #[dbcolumn(column(name="Name"))]
+    name: String,
+    #[dbcolumn(column(name="Description"))]
+    description: String,
+    #[dbcolumn(column(name="Created_DT"))]
+    created_dt: DateTime<Utc>,
+}
+#[derive(Worm)]
+#[dbmodel(table(schema="RustersDb", name="Tokens", alias="tokens"))]
+pub struct Token {
+    #[dbcolumn(column(name="PK", primary_key))]
+    pk: i64,
+    #[dbcolumn(column(name="TokenType_PK", foreign_key="TokenType", insertable))]
+    tokentype_pk: i64,
     #[dbcolumn(column(name="Hash", insertable))]
     hash: String,
     #[dbcolumn(column(name="Created_DT", insertable))]
@@ -197,22 +211,47 @@ pub struct Session {
     #[dbcolumn(column(name="Expired_DT", insertable))]
     expired_dt: DateTime<Utc>,
 }
+#[derive(Worm)]
+#[dbmodel(table(schema="RustersDb", name="Sessions", alias="session"))]
+pub struct Session {
+    #[dbcolumn(column(name="PK", primary_key))]
+    pk: i64,
+    #[dbcolumn(column(name="Token_PK", foreign_key="Token", insertable))]
+    token_pk: i64,
+    #[dbcolumn(column(name="Created_DT", insertable))]
+    created_dt: DateTime<Utc>,
+}
 impl Session {
     pub fn create_new(db: &mut impl DbCtx) -> Result<Session, RustersError> {
-        let hash = Hasher::get_session_hash()?;
-        let session = Session::insert_new(db, hash, Utc::now(), Utc::now() + Duration::hours(1)).quick_match()?;
+        let hash = Hasher::get_token_hash()?;
+        let token_type = Query::<TokenType>::select()
+            .where_eq::<TokenType>(TokenType::NAME, &"Session")
+            .execute_row(db).quick_match()?;
+        let token = Token::insert_new(
+            db, token_type.get_id(), hash, Utc::now(), Utc::now() + Duration::hours(1),
+        ).quick_match()?;
+        let session = Session::insert_new(db, token.get_id(), Utc::now()).quick_match()?;
         return Ok(session);
     }
     pub fn get_active<'a>(db: &mut impl DbCtx, hash: &'a str) -> Result<Session, RustersError> {
         let now: DateTime<Utc> = Utc::now();
         let session = Query::<Session>::select()
-            .where_gt::<Session>(Session::EXPIRED_DT, &now).and()
-            .where_eq::<Session>(Session::HASH, &hash)
+            .join_fk::<Token>().join_and()
+            .join_fk_gt::<Token>(Token::EXPIRED_DT, &now).join_and()
+            .join_fk_eq::<Token>(Token::HASH, &hash)
             .execute_row(db)
             .quick_match()?;
         let exp: DateTime<Utc> = Utc::now() + Duration::hours(1);
         session.update_expired(db, exp)?;
         return Ok(session);
+    }
+    pub fn get_hash<'a>(&self, db: &mut impl DbCtx) -> Result<String, RustersError> {
+        let token = Query::<Token>::select()
+            .join::<Self>()
+            .where_eq::<Self>(Self::PRIMARY_KEY, &self.get_id())
+            .execute_row(db)
+            .quick_match()?;
+        return Ok(token.get_hash());
     }
     const LOGIN_COOKIE: &'static str = "LOGIN";
     pub fn delete_cookie<'a>(&self, db: &mut impl DbCtx, name: &'a str) -> Result<bool, RustersError> {
@@ -289,10 +328,14 @@ impl Session {
         }
     }
     fn update_expired(&self, db: &mut impl DbCtx, new_exp: DateTime<Utc>) -> Result<bool, RustersError> {
-        let query = Query::<Session>::update()
-            .set(Session::EXPIRED_DT, &new_exp)
-            .where_eq::<Session>(Session::PK, &self.pk);
-        let aug = query
+        let token = Query::<Token>::select()
+            .join::<Session>()
+            .where_eq::<Session>(Session::PK, &self.pk)
+            .execute_row(db)
+            .quick_match()?;
+        let aug = Query::<Token>::update()
+            .set(Token::EXPIRED_DT, &new_exp)
+            .where_eq::<Token>(Token::PK, &token.get_id())
             .execute_update(db)
             .quick_match()?;
         if aug == 1 {
