@@ -13,6 +13,10 @@ name = "migrate_down"
 path = "./src/bin/migrate_down.rs"
 
 [[bin]]
+name = "create_user_token"
+path = "./src/bin/create_user_token.rs"
+
+[[bin]]
 name = "create_user"
 path = "./src/bin/create_user.rs"
 

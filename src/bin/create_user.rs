@@ -1,7 +1,6 @@
-use rusters::Clearance;
-use rusters::User;
+use rusters::CreateUserToken;
+use rusters::RustersError;
 use worm::{DbCtx, DbContext};
-use worm::traits::primarykey::PrimaryKeyModel;
 use worm::traits::uniquename::UniqueName;
 use worm_derive::WormDb;
 use std::io::BufRead;
@@ -10,9 +9,14 @@ use std::io::BufRead;
 struct Database {
     context: DbContext,
 }
-fn main() {
+fn main() -> Result<(), RustersError> {
+    match dotenv::dotenv() {
+        _ => {}
+    }
+    let create_hash = std::env::var("CREATE_USER_HASH").unwrap();
     let mut db = Database::init();
     db.context.attach_dbs();
+    CreateUserToken::token_valid(&mut db, &create_hash)?;
     let stdin = std::io::stdin();
     let mut lock = stdin.lock();
     let mut username = String::new();
@@ -29,13 +33,7 @@ fn main() {
         Err(e) => panic!("{}", e),
     }
     password = password.trim().to_string();
-    let clearance = match Clearance::get_by_id(&mut db, 1) {
-        Ok(c) => c,
-        Err(e) => panic!("{}", e),
-    };
-    let user = match User::create(&mut db, &username, &password, clearance) {
-        Ok(u) => u,
-        Err(e) => panic!("{}", e),
-    };
+    let user = CreateUserToken::use_token(&mut db, &create_hash, &username, &password)?;
     println!("Created new user\r\nusername: {}\r\nhash: {}", user.get_name(), user.get_password_hash());
+    Ok(())
 }

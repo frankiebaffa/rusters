@@ -11,4 +11,5 @@ ordering: [
   tbl_sessions,
   tbl_sessioncookies,
   idx_sessioncookiesuniquename,
+  tbl_createusertokens,
 ]
