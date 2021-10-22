@@ -178,7 +178,7 @@ pub struct User {
     salt: String,
     #[dbcolumn(column(name="Active", active_flag))]
     active: bool,
-    #[dbcolumn(column(name="Clearance_PK", insertable))]
+    #[dbcolumn(column(name="Clearance_PK", insertable, foreign_key="Clearance"))]
     clearance_pk: i64,
     #[dbcolumn(column(name="Created_DT", insertable))]
     created_dt: DateTime<Utc>,
@@ -191,6 +191,14 @@ impl User {
         let now = Utc::now();
         let user = User::insert_new(db, username.to_owned(), pw_hash, salt, clearance.pk, now).quick_match()?;
         return Ok(user);
+    }
+    pub fn get_clearance_level<'a>(&self, db: &mut impl DbCtx) -> Result<i64, RustersError> {
+        let c = Query::<Clearance>::select()
+            .join::<User>().join_and()
+            .join_eq::<User>(User::PK, &self.pk)
+            .execute_row(db)
+            .quick_match()?;
+        return Ok(c.get_sequence());
     }
 }
 #[derive(Worm)]
