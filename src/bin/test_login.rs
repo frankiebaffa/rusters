@@ -5,7 +5,7 @@ use {
         core::{
             DbCtx,
             DbContext,
-            traits::uniquename::UniqueName
+            UniqueName
         },
         derive::WormDb,
     },

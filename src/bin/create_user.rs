@@ -1,7 +1,10 @@
 use rusters::CreateUserToken;
 use rusters::RustersError;
-use worm::core::{DbCtx, DbContext};
-use worm::core::traits::uniquename::UniqueName;
+use worm::core::{
+    DbCtx,
+    DbContext,
+    UniqueName,
+};
 use worm::derive::WormDb;
 use std::io::BufRead;
 #[derive(WormDb)]

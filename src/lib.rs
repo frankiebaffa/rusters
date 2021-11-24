@@ -21,7 +21,6 @@ use {
         Utc,
     },
     migaton::traits::Migrations,
-    rusqlite::Error as RusqliteError,
     std::io::{
         Cursor,
         Error as IOError,
@@ -29,10 +28,11 @@ use {
         Write,
     },
     worm::{
-        core::traits::{
-            dbctx::DbCtx,
-            primarykey::PrimaryKey,
-            uniquename::UniqueNameModel,
+        core::{
+            DbCtx,
+            PrimaryKey,
+            UniqueNameModel,
+            sql::Error as RusqliteError,
         },
         derive::Worm,
     },
@@ -91,7 +91,7 @@ impl<T> MatchRustersError<T, BcryptError> for Result<T, BcryptError> {
         };
     }
 }
-impl<T> MatchRustersError<T, rusqlite::Error> for Result<T, rusqlite::Error> {
+impl<T> MatchRustersError<T, RusqliteError> for Result<T, RusqliteError> {
     fn quick_match(self) -> Result<T, RustersError> {
         return match self {
             Ok(s) => Ok(s),
