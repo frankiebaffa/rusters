@@ -72,12 +72,11 @@ dependencies = [
 [[package]]
 name = "buildlite"
 version = "0.1.0"
-source = "git+https://github.com/frankiebaffa/buildlite?branch=master#c7c84d9e46dac2999ec21a9f17c66f140a6de541"
+source = "git+https://github.com/frankiebaffa/buildlite?branch=master#fd9059e648780f52ba2783efba80df7c2bd6884b"
 dependencies = [
  "chrono",
  "rusqlite",
  "worm",
- "worm_derive",
 ]
 
 [[package]]
@@ -88,9 +87,9 @@ checksum = "14c189c53d098945499cdfa7ecc63567cf3886b3332b312a5b4585d8d3a6a610"
 
 [[package]]
 name = "cc"
-version = "1.0.71"
+version = "1.0.72"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "79c2681d6594606957bbb8631c4b90a7fcaaa72cdb714743a437b156d6a7eedd"
+checksum = "22a9137b95ea06864e018375b72adfb7db6e6f68cfc8df5a04d00288050485ee"
 
 [[package]]
 name = "cfg-if"
@@ -258,9 +257,9 @@ checksum = "67c21572b4949434e4fc1e1978b99c5f77064153c59d998bf13ecd96fb5ecba7"
 
 [[package]]
 name = "libc"
-version = "0.2.104"
+version = "0.2.108"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7b2f96d100e1cf1929e7719b7edb3b90ab5298072638fccd77be9ce942ecdfce"
+checksum = "8521a1b57e76b1ec69af7599e75e38e7b7fad6610f037db8c79b127201b5d119"
 
 [[package]]
 name = "libsqlite3-sys"
@@ -288,13 +287,12 @@ checksum = "308cc39be01b73d0d18f82a0e7b2a3df85245f84af96fdddc5d202d27e47b86a"
 [[package]]
 name = "migaton"
 version = "0.1.0"
-source = "git+https://github.com/frankiebaffa/migaton?branch=master#e90d97481aa7cae4b99ada25e4b5dcfc614f9588"
+source = "git+https://github.com/frankiebaffa/migaton?branch=master#4677b65709653697b9041acc1671a1a6818369e0"
 dependencies = [
  "rusqlite",
  "serde",
  "serde_yaml",
  "worm",
- "worm_derive",
 ]
 
 [[package]]
@@ -330,15 +328,15 @@ checksum = "624a8340c38c1b80fd549087862da4ba43e08858af025b236e509b6649fc13d5"
 
 [[package]]
 name = "pkg-config"
-version = "0.3.20"
+version = "0.3.22"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7c9b1041b4387893b91ee6746cddfc28516aff326a3519fb2adf820932c5e6cb"
+checksum = "12295df4f294471248581bc09bef3c38a5e46f1e36d6a37353621a0c6c357e1f"
 
 [[package]]
 name = "proc-macro2"
-version = "1.0.30"
+version = "1.0.32"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "edc3358ebc67bc8b7fa0c007f945b0b18226f78437d61bec735a9eb96b61ee70"
+checksum = "ba508cc11742c0dc5c1659771673afbab7a0efab23aa17e854cbab0837ed0b43"
 dependencies = [
  "unicode-xid",
 ]
@@ -381,7 +379,6 @@ dependencies = [
  "rusqlite",
  "sha3",
  "worm",
- "worm_derive",
 ]
 
 [[package]]
@@ -442,9 +439,9 @@ checksum = "73473c0e59e6d5812c5dfe2a064a6444949f089e20eec9a2e5506596494e4623"
 
 [[package]]
 name = "syn"
-version = "1.0.80"
+version = "1.0.81"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d010a1623fbd906d51d650a9916aaefc05ffa0e4053ff7fe601167f3e715d194"
+checksum = "f2afee18b8beb5a596ecb4a2dce128c719b4ba399d34126b9e4396e3f9860966"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -516,22 +513,39 @@ checksum = "712e227841d057c1ee1cd2fb22fa7e5a5461ae8e48fa2ca79ec42cfc1931183f"
 [[package]]
 name = "worm"
 version = "0.1.0"
-source = "git+https://github.com/frankiebaffa/worm?branch=master#32d24accab73a48ddccddbf7336d60a98adcaff0"
+source = "git+https://github.com/frankiebaffa/worm?branch=master#5be615e630ef871b1f8bf25080ea18b32e0a29a5"
+dependencies = [
+ "worm_core 0.1.1 (git+https://github.com/frankiebaffa/worm_core?branch=master)",
+ "worm_derive",
+]
+
+[[package]]
+name = "worm_core"
+version = "0.1.1"
+source = "git+https://github.com/frankiebaffa/worm_core?branch=master#8ef6393384bd0db777c7f2718c604878170bd3c6"
+dependencies = [
+ "rusqlite",
+]
+
+[[package]]
+name = "worm_core"
+version = "0.1.1"
+source = "git+https://github.com/frankiebaffa/worm_core#8ef6393384bd0db777c7f2718c604878170bd3c6"
 dependencies = [
  "rusqlite",
 ]
 
 [[package]]
 name = "worm_derive"
-version = "0.1.0"
-source = "git+https://github.com/frankiebaffa/worm_derive?branch=master#f218481b0da1bc485c5320efd60d534d82b16645"
+version = "0.1.1"
+source = "git+https://github.com/frankiebaffa/worm_derive?branch=master#3bb9a90a9f345b9165782851ce8263b1dc12aa95"
 dependencies = [
  "darling",
  "dotenv",
  "quote",
  "rusqlite",
  "syn",
- "worm",
+ "worm_core 0.1.1 (git+https://github.com/frankiebaffa/worm_core)",
 ]
 
 [[package]]

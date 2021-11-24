@@ -2,7 +2,7 @@
 name = "rusters"
 version = "0.1.0"
 authors = ["Frankie Baffa <frankie.baffa@gentryhealthservices.com>"]
-edition = "2018"
+edition = "2021"
 
 [[bin]]
 name = "migrate_up"
@@ -61,6 +61,5 @@ dotenv = "0.15"
 migaton = { git = "https://github.com/frankiebaffa/migaton", branch = "master" }
 rusqlite = { version = "0.25", features = ["bundled"] }
 sha3 = "0.9"
-worm = { git = "https://github.com/frankiebaffa/worm", branch = "master" }
-worm_derive = { git = "https://github.com/frankiebaffa/worm_derive", branch = "master" }
+worm = { git = "https://github.com/frankiebaffa/worm", branch = "master", features = ["derive"] }
 
