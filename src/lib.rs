@@ -1,3 +1,5 @@
+#[cfg(test)]
+mod tests;
 use {
     base64::{
         write::EncoderStringWriter,
