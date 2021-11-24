@@ -1,6 +1,6 @@
 use rusters::Session;
-use worm::{DbCtx, DbContext};
-use worm_derive::WormDb;
+use worm::core::{DbCtx, DbContext};
+use worm::derive::WormDb;
 #[derive(WormDb)]
 #[db(var(name="RUSTERSDBS"))]
 struct Database {

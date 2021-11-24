@@ -1,7 +1,7 @@
 use rusters::Session;
-use worm::{DbCtx, DbContext};
+use worm::core::{DbCtx, DbContext};
 use std::io::BufRead;
-use worm_derive::WormDb;
+use worm::derive::WormDb;
 #[derive(WormDb)]
 #[db(var(name="RUSTERSDBS"))]
 struct Database {

@@ -7,10 +7,12 @@ use {
     },
     std::io::BufRead,
     worm::{
-        DbContext,
-        DbCtx,
+        core::{
+            DbContext,
+            DbCtx,
+        },
+        derive::WormDb,
     },
-    worm_derive::WormDb,
 };
 #[derive(WormDb)]
 #[db(var(name="RUSTERSDBS"))]

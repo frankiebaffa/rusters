@@ -2,10 +2,12 @@ use {
     migaton::traits::DoMigrations,
     rusters::RustersMigrator,
     worm::{
-        DbCtx,
-        DbContext,
+        core::{
+            DbCtx,
+            DbContext,
+        },
+        derive::WormDb,
     },
-    worm_derive::WormDb,
 };
 #[derive(WormDb)]
 #[db(var(name="RUSTERSDBS"))]

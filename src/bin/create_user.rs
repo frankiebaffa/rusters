@@ -1,8 +1,8 @@
 use rusters::CreateUserToken;
 use rusters::RustersError;
-use worm::{DbCtx, DbContext};
-use worm::traits::uniquename::UniqueName;
-use worm_derive::WormDb;
+use worm::core::{DbCtx, DbContext};
+use worm::core::traits::uniquename::UniqueName;
+use worm::derive::WormDb;
 use std::io::BufRead;
 #[derive(WormDb)]
 #[db(var(name="RUSTERSDBS"))]

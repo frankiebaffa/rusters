@@ -28,12 +28,14 @@ use {
         Read,
         Write,
     },
-    worm::traits::{
-        dbctx::DbCtx,
-        primarykey::PrimaryKey,
-        uniquename::UniqueNameModel,
+    worm::{
+        core::traits::{
+            dbctx::DbCtx,
+            primarykey::PrimaryKey,
+            uniquename::UniqueNameModel,
+        },
+        derive::Worm,
     },
-    worm_derive::Worm,
 };
 pub mod context;
 #[derive(Debug)]
