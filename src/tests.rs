@@ -36,10 +36,15 @@ fn migrate_down(mem_db: &mut Database, db: &mut Database) {
 fn get_clearance_by_name() {
     let (mut mem_db, mut db) = get_db_ctx();
     migrate_up(&mut mem_db, &mut db);
+    let name = "King";
+    let c_res = Clearance::from_name(&mut db, name);
+    assert!(c_res.is_ok());
+    let c = c_res.unwrap();
+    assert_eq!(c.get_name(), name);
     migrate_down(&mut mem_db, &mut db);
 }
-#[test]
-#[serial]
-fn create_user_token_and_user() {
-
-}
+//#[test]
+//#[serial]
+//fn create_user_token_and_user() {
+//
+//}

@@ -168,6 +168,14 @@ impl Clearance {
             .execute(db)
             .quick_match();
     }
+    pub fn from_name<'a>(
+        db: &mut impl DbCtx, name: &'a str
+    ) -> Result<Clearance, RustersError> {
+        return Query::<Clearance>::select()
+            .where_eq::<Clearance>(Clearance::NAME, &name)
+            .execute_row(db)
+            .quick_match();
+    }
 }
 #[derive(Worm)]
 #[dbmodel(table(schema="RustersDb", name="Users", alias="user"))]
