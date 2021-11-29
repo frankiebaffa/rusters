@@ -4,54 +4,6 @@ version = "0.1.0"
 authors = ["Frankie Baffa <frankie.baffa@gentryhealthservices.com>"]
 edition = "2021"
 
-[[bin]]
-name = "migrate_up"
-path = "./src/bin/migrate_up.rs"
-
-[[bin]]
-name = "migrate_down"
-path = "./src/bin/migrate_down.rs"
-
-[[bin]]
-name = "create_user_token"
-path = "./src/bin/create_user_token.rs"
-
-[[bin]]
-name = "create_user"
-path = "./src/bin/create_user.rs"
-
-[[bin]]
-name = "login"
-path = "./src/bin/test_login.rs"
-
-[[bin]]
-name = "logout"
-path = "./src/bin/test_logout.rs"
-
-[[bin]]
-name = "is_logged_in"
-path = "./src/bin/test_is_logged_in.rs"
-
-[[bin]]
-name = "set_cookie"
-path = "./src/bin/test_set_cookie.rs"
-
-[[bin]]
-name = "read_cookie"
-path = "./src/bin/test_read_cookie.rs"
-
-[[bin]]
-name = "delete_cookie"
-path = "./src/bin/test_delete_cookie.rs"
-
-[[bin]]
-name = "check_session"
-path = "./src/bin/test_check_session.rs"
-
-[[bin]]
-name = "create_session"
-path = "./src/bin/test_create_session.rs"
-
 [dependencies]
 base64 = "0.13"
 bcrypt = "0.10"
