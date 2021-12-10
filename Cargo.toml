@@ -14,5 +14,6 @@ migaton = { git = "https://github.com/frankiebaffa/migaton", branch = "master" }
 rusqlite = { version = "0.25", features = ["bundled"] }
 serial_test = "*"
 sha3 = "0.9"
+uuid = { version = "0.8", features = ["v4"]}
 worm = { git = "https://github.com/frankiebaffa/worm", branch = "master", features = ["derive"] }
 
