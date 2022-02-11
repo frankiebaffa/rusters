@@ -20,7 +20,10 @@ pub use {
     token::{
         Token,
         tokentype::TokenType,
-        createuser::CreateUserToken,
+        consumable_token::{
+            ConsumableToken,
+            consumer::Consumer,
+        },
     },
     user::{
         clearance::Clearance,

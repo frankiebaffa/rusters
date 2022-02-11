@@ -14,7 +14,7 @@ use {
             MatchRustersError,
             RustersError,
         },
-        hash::Hasher,
+        hash::Secure,
         token::Token,
         user::User,
     },
@@ -35,13 +35,13 @@ pub struct Session {
     pk: i64,
     #[dbcolumn(column(name="Token_PK", foreign_key="Token", insertable))]
     token_pk: i64,
-    #[dbcolumn(column(name="Created_DT", insertable))]
+    #[dbcolumn(column(name="Created_DT", insertable, utc_now))]
     created_dt: DateTime<Utc>,
 }
 impl Session {
     pub fn create_new(db: &mut impl DbCtx) -> Result<(Session, String), RustersError> {
         let token = Token::generate_for_new_session(db)?;
-        let session = Session::insert_new(db, token.get_id(), Utc::now()).quick_match()?;
+        let session = Session::insert_new(db, token.get_id()).quick_match()?;
         return Ok((session, token.get_hash()));
     }
     pub fn get_active<'a>(db: &mut impl DbCtx, hash: &'a str) -> Result<Session, RustersError> {
@@ -123,7 +123,7 @@ impl Session {
         self.update_expired(db, Utc::now())?;
         let user = User::get_by_name(db, username).quick_match()?;
         let stored_hash = user.get_password_hash();
-        let verified = Hasher::verify(password, &stored_hash)?;
+        let verified = Secure::validate(password, stored_hash)?;
         if !verified {
             return Err(RustersError::InvalidCredentialsError);
         }

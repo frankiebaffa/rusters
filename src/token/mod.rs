@@ -1,5 +1,5 @@
 pub mod tokentype;
-pub mod createuser;
+pub mod consumable_token;
 use {
     buildlite::Query,
     chrono::{
@@ -12,9 +12,11 @@ use {
             MatchRustersError,
             RustersError,
         },
-        hash::Hasher,
+        hash::{
+            Basic,
+            Hash,
+        },
     },
-    tokentype::TokenType,
     worm::{
         core::{
             DbCtx,
@@ -28,11 +30,9 @@ use {
 pub struct Token {
     #[dbcolumn(column(name="PK", primary_key))]
     pk: i64,
-    #[dbcolumn(column(name="TokenType_PK", foreign_key="TokenType", insertable))]
-    tokentype_pk: i64,
     #[dbcolumn(column(name="Hash", insertable))]
     hash: String,
-    #[dbcolumn(column(name="Created_DT", insertable))]
+    #[dbcolumn(column(name="Created_DT", insertable, utc_now))]
     created_dt: DateTime<Utc>,
     #[dbcolumn(column(name="Expired_DT", insertable))]
     expired_dt: DateTime<Utc>,
@@ -41,15 +41,10 @@ impl Token {
     pub fn generate_for_new_user(
         db: &mut impl DbCtx
     ) -> Result<Token, RustersError> {
-        let hash = Hasher::get_token_hash()?;
-        let token_type = Query::<TokenType>::select()
-            .where_eq::<TokenType>(TokenType::NAME, &"CreateUser")
-            .execute_row(db)
-            .quick_match()?;
+        let hash = Basic::rand()?;
         return Token::insert_new(
             db,
-            token_type.get_id(),
-            hash, Utc::now(),
+            hash.hash,
             Utc::now() + Duration::days(1)
         ).quick_match();
     }
@@ -57,15 +52,18 @@ impl Token {
         db: &mut impl DbCtx
     ) -> Result<Token, RustersError> {
         let hash = Hasher::get_token_hash()?;
-        let token_type = Query::<TokenType>::select()
-            .where_eq::<TokenType>(TokenType::NAME, &"Session")
-            .execute_row(db)
-            .quick_match()?;
         return Token::insert_new(
             db,
-            token_type.get_id(),
-            hash, Utc::now(),
+            hash,
             Utc::now() + Duration::days(1)
         ).quick_match();
+    }
+    pub fn force_expire(&self, db: &mut impl DbCtx) -> Result<usize, RustersError> {
+        let safe_now = Utc::now() - Duration::seconds(-1);
+        Query::<Token>::update()
+            .set(Token::EXPIRED_DT, &safe_now)
+            .where_eq::<Token>(Token::PRIMARY_KEY, &self.pk)
+            .execute_update(db)
+            .quick_match()
     }
 }
