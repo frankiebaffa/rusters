@@ -14,11 +14,13 @@ use {
             MatchRustersError,
             RustersError,
         },
-        hash::Secure,
+        hash::{ Basic, Hash, Secure },
         token::Token,
         user::User,
     },
     cookie::SessionCookie,
+    lazy_static::lazy_static,
+    std::sync::Mutex,
     worm::{
         core::{
             DbCtx,
@@ -28,6 +30,10 @@ use {
         derive::Worm,
     },
 };
+
+lazy_static! {
+    static ref EXPIRES: Mutex<Duration> = Mutex::new(Duration::hours(1));
+}
 #[derive(Worm)]
 #[dbmodel(table(schema="RustersDb", name="Sessions", alias="session"))]
 pub struct Session {
@@ -39,8 +45,17 @@ pub struct Session {
     created_dt: DateTime<Utc>,
 }
 impl Session {
-    pub fn create_new(db: &mut impl DbCtx) -> Result<(Session, String), RustersError> {
-        let token = Token::generate_for_new_session(db)?;
+    fn expires() -> Duration {
+        EXPIRES.lock().unwrap().clone()
+    }
+    pub fn set_expires(dur: Duration) {
+        (*EXPIRES.lock().unwrap()) = dur;
+    }
+    pub fn create_new(
+        db: &mut impl DbCtx, exp: Duration
+    ) -> Result<(Session, String), RustersError> {
+        let hash = Basic::rand()?;
+        let token = Token::from_hash(db, hash, exp)?;
         let session = Session::insert_new(db, token.get_id()).quick_match()?;
         return Ok((session, token.get_hash()));
     }
@@ -52,7 +67,7 @@ impl Session {
             .join_fk_eq::<Token>(Token::HASH, &hash)
             .execute_row(db)
             .quick_match()?;
-        let exp: DateTime<Utc> = Utc::now() + Duration::hours(1);
+        let exp: DateTime<Utc> = Utc::now() + Self::expires();
         session.update_expired(db, exp)?;
         return Ok(session);
     }
@@ -66,7 +81,7 @@ impl Session {
     }
     const LOGIN_COOKIE: &'static str = "LOGIN";
     pub fn delete_cookie<'a>(&self, db: &mut impl DbCtx, name: &'a str) -> Result<bool, RustersError> {
-        self.update_expired(db, Utc::now() + Duration::hours(1))?;
+        self.update_expired(db, Utc::now() + Self::expires())?;
         let aug = Query::<SessionCookie>::update()
             .set(SessionCookie::ACTIVE, &0)
             .where_eq::<SessionCookie>(SessionCookie::SESSION_PK, &self.pk).and()
@@ -81,7 +96,7 @@ impl Session {
         }
     }
     pub fn read_cookie<'a>(&self, db: &mut impl DbCtx, name: &'a str) -> Result<Option<SessionCookie>, RustersError> {
-        self.update_expired(db, Utc::now() + Duration::hours(1))?;
+        self.update_expired(db, Utc::now() + Self::expires())?;
         let cookie_res = Query::<SessionCookie>::select()
             .where_eq::<SessionCookie>(SessionCookie::SESSION_PK, &self.get_id()).and()
             .where_eq::<SessionCookie>(SessionCookie::NAME, &name).and()
@@ -96,21 +111,33 @@ impl Session {
         }
     }
     pub fn set_cookie<'a>(&self, db: &mut impl DbCtx, name: &'a str, value: &'a str) -> Result<SessionCookie, RustersError> {
-        self.update_expired(db, Utc::now() + Duration::hours(1))?;
+        self.update_expired(db, Utc::now() + Self::expires())?;
         let cookie = self.read_cookie(db, name)?;
         if cookie.is_some() {
             self.delete_cookie(db, name)?;
-            let new_cookie = SessionCookie::insert_new(db, self.get_id(), name.to_string(), value.to_string(), Utc::now()).quick_match()?;
-            return Ok(new_cookie);
+            match SessionCookie::insert_new(
+                db, self.get_id(), name.to_string(), value.to_string(),
+            ).quick_match() {
+                Ok(c) => Ok(c),
+                Err(e) => {
+                    println!("{}", e);
+                    Err(e)
+                },
+            }
         } else {
-            return Ok(SessionCookie::insert_new(
-                db, self.get_id(), name.to_string(),
-                value.to_string(), Utc::now()
-            ).quick_match()?);
+            match SessionCookie::insert_new(
+                db, self.get_id(), name.to_string(), value.to_string()
+            ).quick_match() {
+                Ok(c) => Ok(c),
+                Err(e) => {
+                    println!("{}", e);
+                    Err(e)
+                },
+            }
         }
     }
     pub fn is_logged_in<'s>(&self, db: &mut impl DbCtx) -> Result<Option<User>, RustersError> {
-        self.update_expired(db, Utc::now() + Duration::hours(1))?;
+        self.update_expired(db, Utc::now() + Self::expires())?;
         let login_cookie_opt = self.read_cookie(db, Self::LOGIN_COOKIE)?;
         if login_cookie_opt.is_none() {
             return Ok(None);

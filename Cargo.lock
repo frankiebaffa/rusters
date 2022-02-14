@@ -427,6 +427,7 @@ dependencies = [
  "buildlite",
  "chrono",
  "dotenv",
+ "lazy_static",
  "migaton",
  "rusqlite",
  "serial_test",

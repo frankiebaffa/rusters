@@ -10,6 +10,7 @@ bcrypt = "0.10"
 buildlite = { git = "https://github.com/frankiebaffa/buildlite", branch = "master" }
 chrono = "0.4"
 dotenv = "0.15"
+lazy_static = "1.4"
 migaton = { git = "https://github.com/frankiebaffa/migaton", branch = "master" }
 rusqlite = { version = "0.25", features = ["bundled"] }
 serial_test = "*"
