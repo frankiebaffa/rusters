@@ -22,6 +22,7 @@ use {
     uuid::Uuid,
 };
 pub trait Hash: Sized {
+    fn get_hash(&self) -> String;
     fn from_string(to_hash: impl AsRef<str>) -> Result<Self, RustersError>;
     fn rand() -> Result<Self, RustersError> {
         let uuid = Uuid::new_v4().to_string();
@@ -31,9 +32,10 @@ pub trait Hash: Sized {
 pub struct Basic {
     hash: String,
 }
-impl Basic {
-    fn get_hash(
 impl Hash for Basic {
+    fn get_hash(&self) -> String {
+        self.hash.clone()
+    }
     fn from_string(to_hash: impl AsRef<str>) -> Result<Self, RustersError> {
         let mut enc_write = EncoderStringWriter::new(URL_SAFE);
         enc_write.write_all(to_hash.as_ref().as_bytes()).quick_match()?;
@@ -57,8 +59,14 @@ impl Secure {
         dec_read.read_to_string(&mut stored_hash).quick_match()?;
         return verify(check.as_ref(), &stored_hash).quick_match();
     }
+    pub fn get_salt(&self) -> String {
+        self.salt.clone()
+    }
 }
 impl Hash for Secure {
+    fn get_hash(&self) -> String {
+        self.hash.clone()
+    }
     fn from_string(to_hash: impl AsRef<str>) -> Result<Self, RustersError> {
         let hash_parts = hash_with_result(to_hash.as_ref(), Self::COST).quick_match()?;
         let salt = hash_parts.get_salt();

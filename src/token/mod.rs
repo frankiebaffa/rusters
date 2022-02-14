@@ -12,10 +12,7 @@ use {
             MatchRustersError,
             RustersError,
         },
-        hash::{
-            Basic,
-            Hash,
-        },
+        hash::Hash,
     },
     worm::{
         core::{
@@ -38,26 +35,15 @@ pub struct Token {
     expired_dt: DateTime<Utc>,
 }
 impl Token {
-    pub fn generate_for_new_user(
-        db: &mut impl DbCtx
-    ) -> Result<Token, RustersError> {
-        let hash = Basic::rand()?;
-        return Token::insert_new(
+    /// Creates a hash from a random uuid
+    pub fn from_hash(db: &mut impl DbCtx, hash: impl Hash, exp: Duration) -> Result<Self, RustersError> {
+        Token::insert_new(
             db,
-            hash.hash,
-            Utc::now() + Duration::days(1)
-        ).quick_match();
+            hash.get_hash(),
+            Utc::now() + exp,
+        ).quick_match()
     }
-    pub fn generate_for_new_session(
-        db: &mut impl DbCtx
-    ) -> Result<Token, RustersError> {
-        let hash = Hasher::get_token_hash()?;
-        return Token::insert_new(
-            db,
-            hash,
-            Utc::now() + Duration::days(1)
-        ).quick_match();
-    }
+    /// Forces a token to expire
     pub fn force_expire(&self, db: &mut impl DbCtx) -> Result<usize, RustersError> {
         let safe_now = Utc::now() - Duration::seconds(-1);
         Query::<Token>::update()

@@ -3,6 +3,7 @@ use {
     buildlite::Query,
     chrono::{
         DateTime,
+        Duration,
         Utc,
     },
     consumer::Consumer,
@@ -11,6 +12,7 @@ use {
             MatchRustersError,
             RustersError,
         },
+        hash::{ Basic, Hash, },
         token::Token,
     },
     worm::{
@@ -37,8 +39,10 @@ impl ConsumableToken {
     pub fn create_new(
         db: &mut impl DbCtx,
         consumer: Consumer,
+        exp: Duration,
     ) -> Result<(Self, String), RustersError> {
-        let token = Token::generate_for_new_user(db)?;
+        let hash = Basic::rand()?;
+        let token = Token::from_hash(db, hash, exp)?;
         let cut = Self::insert_new(
             db,
             token.get_id(),

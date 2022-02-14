@@ -28,7 +28,7 @@ create table RustersDb.Tokens
 	,	Hash text not null unique
 	,	Created_DT not null
 	,	Expired_DT not null
-	,	foreign key (TokenType_PK) references TokenType (PK)
+	,	foreign key (TokenType_PK) references TokenTypes (PK)
 	);
 -- fill new with sessions
 insert into RustersDb.Tokens
@@ -100,6 +100,32 @@ create table RustersDb.Sessions
 insert into RustersDb.Sessions
 select *
 from TempOldSessions;
+/**
+ * Fix table SessionCookies
+ */
+-- drop unique index
+drop index RustersDb.SessionCookiesUniqueName;
+-- rename old
+alter table RustersDb.SessionCookies rename to TempOldCookies;
+-- create new
+create table RustersDb.SessionCookies
+	(
+		PK integer not null primary key autoincrement
+	,	Session_PK integer not null
+	,	Name text not null
+	,	Active integer not null default 1
+	,	Value text not null
+	,	Created_DT text not null
+	,	foreign key (Session_PK) references Sessions (PK)
+	);
+-- recreate index
+create unique index RustersDb.SessionCookiesUniqueName on SessionCookies (Session_PK, Name) where Active = 1;
+-- fill table
+insert into RustersDb.SessionCookies
+select *
+from RustersDb.TempOldCookies;
+-- drop old cookies table
+drop table RustersDb.TempOldCookies;
 -- drop old
 drop table RustersDb.TempOldSessions;
 -- drop old tokens table

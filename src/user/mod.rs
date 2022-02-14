@@ -11,7 +11,10 @@ use {
             MatchRustersError,
             RustersError,
         },
-        hash::Hasher,
+        hash::{
+            Secure,
+            Hash,
+        },
     },
     worm::{
         core::{
@@ -41,11 +44,11 @@ pub struct User {
 }
 impl User {
     pub fn create<'a>(db: &mut impl DbCtx, username: &'a str, password: &'a str, clearance: Clearance) -> Result<Self, RustersError> {
-        let hashed = Hasher::hash_password(password.to_owned())?;
-        let salt = hashed.salt;
-        let pw_hash = hashed.b64_hash;
+        let hashed = Secure::from_string(password)?;
+        let salt = hashed.get_salt();
+        let hash = hashed.get_hash();
         let now = Utc::now();
-        let user = User::insert_new(db, username.to_owned(), pw_hash, salt, clearance.get_id(), now).quick_match()?;
+        let user = User::insert_new(db, username.to_owned(), hash, salt, clearance.get_id(), now).quick_match()?;
         return Ok(user);
     }
     pub fn get_clearance_level<'a>(&self, db: &mut impl DbCtx) -> Result<i64, RustersError> {

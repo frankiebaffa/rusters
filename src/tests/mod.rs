@@ -1,4 +1,5 @@
 use {
+    chrono::Duration,
     crate::{
         Clearance,
         ConsumableToken,
@@ -10,6 +11,7 @@ use {
     },
     migaton::traits::DoMigrations,
     serial_test::serial,
+    std::path::PathBuf,
     worm::{
         core::{
             DbCtx,
@@ -19,6 +21,12 @@ use {
         derive::WormDb,
     },
 };
+fn delete_db_file_if_exists() {
+    let db_path = PathBuf::from("./RustersDb.db");
+    if db_path.exists() {
+        std::fs::remove_file(db_path).unwrap();
+    }
+}
 #[derive(WormDb)]
 #[db(var(name="RUSTERSDBS"))]
 struct Database {
@@ -40,6 +48,7 @@ fn get_clearance(db: &mut Database) -> Clearance {
 #[test]
 #[serial]
 fn get_clearance_by_name() {
+    delete_db_file_if_exists();
     RustersMigrator::migrate_up::<Database>(None);
     let mut db = get_db_ctx();
     get_clearance(&mut db);
@@ -54,7 +63,7 @@ fn get_token_type(db: &mut Database) -> Consumer {
 }
 fn get_token(db: &mut Database) -> (ConsumableToken, String) {
     let t_type = get_token_type(db);
-    let t_res = ConsumableToken::create_new(db, t_type);
+    let t_res = ConsumableToken::create_new(db, t_type, Duration::hours(1));
     assert!(t_res.is_ok());
     let (t, h) = t_res.unwrap();
     assert!(!h.is_empty());
@@ -63,6 +72,7 @@ fn get_token(db: &mut Database) -> (ConsumableToken, String) {
 #[test]
 #[serial]
 fn create_consumable_token() {
+    delete_db_file_if_exists();
     RustersMigrator::migrate_up::<Database>(None);
     let mut db = get_db_ctx();
     get_token(&mut db);
@@ -81,19 +91,21 @@ fn get_new_user(db: &mut Database) -> (String, User) {
 #[test]
 #[serial]
 fn create_new_user() {
+    delete_db_file_if_exists();
     RustersMigrator::migrate_up::<Database>(None);
     let mut db = get_db_ctx();
     get_new_user(&mut db);
     RustersMigrator::migrate_down::<Database>(None);
 }
 fn get_session(db: &mut Database) -> (Session, String) {
-    let s_res = Session::create_new(db);
+    let s_res = Session::create_new(db, Duration::hours(1));
     assert!(s_res.is_ok());
     return s_res.unwrap();
 }
 #[test]
 #[serial]
 fn create_session() {
+    delete_db_file_if_exists();
     RustersMigrator::migrate_up::<Database>(None);
     let mut db = get_db_ctx();
     get_session(&mut db);
@@ -113,6 +125,7 @@ fn check_session(db: &mut Database) -> (Session, String) {
 #[test]
 #[serial]
 fn create_and_check_session() {
+    delete_db_file_if_exists();
     RustersMigrator::migrate_up::<Database>(None);
     let mut db = get_db_ctx();
     check_session(&mut db);
@@ -145,6 +158,7 @@ fn create_user_and_login(db: &mut Database) -> (Session, User) {
 #[test]
 #[serial]
 fn login_user() {
+    delete_db_file_if_exists();
     RustersMigrator::migrate_up::<Database>(None);
     let mut db = get_db_ctx();
     create_user_and_login(&mut db);
@@ -153,6 +167,7 @@ fn login_user() {
 #[test]
 #[serial]
 fn logout_user() {
+    delete_db_file_if_exists();
     RustersMigrator::migrate_up::<Database>(None);
     let mut db = get_db_ctx();
     let (s, _) = create_user_and_login(&mut db);
@@ -177,6 +192,7 @@ fn create_cookie(db: &mut Database, s: &Session) -> (String, String) {
 #[test]
 #[serial]
 fn set_cookie() {
+    delete_db_file_if_exists();
     RustersMigrator::migrate_up::<Database>(None);
     let mut db = get_db_ctx();
     let (s, _) = get_session(&mut db);
@@ -201,6 +217,7 @@ fn check_cookie(db: &mut Database, s: &Session) -> SessionCookie {
 #[test]
 #[serial]
 fn read_cookie() {
+    delete_db_file_if_exists();
     RustersMigrator::migrate_up::<Database>(None);
     let mut db = get_db_ctx();
     let (s, _) = get_session(&mut db);
@@ -210,6 +227,7 @@ fn read_cookie() {
 #[test]
 #[serial]
 fn delete_cookie() {
+    delete_db_file_if_exists();
     RustersMigrator::migrate_up::<Database>(None);
     let mut db = get_db_ctx();
     let (s, _) = get_session(&mut db);
@@ -225,7 +243,7 @@ fn delete_cookie() {
     RustersMigrator::migrate_down::<Database>(None);
 }
 // TODO: delete after testing!
-//#[test]
-//fn test_legacy_db() {
-//    RustersMigrator::migrate_up::<Database>(None);
-//}
+#[test]
+fn migrate_up_test() {
+    RustersMigrator::migrate_up::<Database>(None);
+}

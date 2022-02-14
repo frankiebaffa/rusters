@@ -19,6 +19,6 @@ pub struct SessionCookie {
     value: String,
     #[dbcolumn(column(name="Active", active_flag))]
     active: bool,
-    #[dbcolumn(column(name="Created_DT", insertable))]
+    #[dbcolumn(column(name="Created_DT", insertable, utc_now))]
     created_dt: DateTime<Utc>,
 }
