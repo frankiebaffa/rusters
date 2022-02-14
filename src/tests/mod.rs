@@ -98,7 +98,7 @@ fn create_new_user() {
     RustersMigrator::migrate_down::<Database>(None);
 }
 fn get_session(db: &mut Database) -> (Session, String) {
-    let s_res = Session::create_new(db, Duration::hours(1));
+    let s_res = Session::create_new(db);
     assert!(s_res.is_ok());
     return s_res.unwrap();
 }

@@ -52,10 +52,10 @@ impl Session {
         (*EXPIRES.lock().unwrap()) = dur;
     }
     pub fn create_new(
-        db: &mut impl DbCtx, exp: Duration
+        db: &mut impl DbCtx
     ) -> Result<(Session, String), RustersError> {
         let hash = Basic::rand()?;
-        let token = Token::from_hash(db, hash, exp)?;
+        let token = Token::from_hash(db, hash, *EXPIRES.lock().unwrap())?;
         let session = Session::insert_new(db, token.get_id()).quick_match()?;
         return Ok((session, token.get_hash()));
     }

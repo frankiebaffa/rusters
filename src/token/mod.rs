@@ -1,4 +1,3 @@
-pub mod tokentype;
 pub mod consumable_token;
 use {
     buildlite::Query,
