@@ -95,6 +95,12 @@ pub trait Consumable {
     fn get(db: &mut impl DbCtx) -> Result<Consumer, RustersError> {
         Consumer::get_or_create(db, Self::UNIQUE_KEY)
     }
+    fn new_token(
+        db: &mut impl DbCtx, dur: Duration
+    ) -> Result<(ConsumableToken, String), RustersError> {
+        let consumer = Self::get(db)?;
+        ConsumableToken::create_new(db, consumer, dur)
+    }
     fn can_consume(
         db: &mut impl DbCtx, hash: impl AsRef<str>
     ) -> Result<ConsumableToken, RustersError> {
