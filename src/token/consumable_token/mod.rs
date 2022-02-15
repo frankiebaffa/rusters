@@ -8,10 +8,6 @@ use {
     },
     consumer::Consumer,
     crate::{
-        user::{
-            clearance::Clearance,
-            User,
-        },
         error::{
             MatchRustersError,
             RustersError,
@@ -107,16 +103,20 @@ pub trait Consumable {
         let consumer = Self::get(db)?;
         ConsumableToken::can_consume(db, hash, consumer)
     }
-    fn use_token(
-        db: &mut impl DbCtx, hash: impl AsRef<str>, username: impl AsRef<str>,
-        password: impl AsRef<str>, clearance: Clearance,
-    ) -> Result<(), RustersError> {
-        let token = Self::can_consume(db, hash)?;
-        User::create(
-            db, username.as_ref(), password.as_ref(), clearance
-        )?;
-        token.consume(db)?;
-        Ok(())
+    fn use_token<Db, Arg, ErrOut, Func>(
+        db: &mut Db, token: ConsumableToken, arg: Arg, f: Func,
+    ) -> Result<bool, ErrOut>
+    where
+        Db: DbCtx + Sized,
+        Func: Fn(&mut Db, Arg) -> Result<bool, ErrOut>,
+    {
+        let res = f(db, arg)?;
+        if !res {
+            return Ok(res);
+        }
+        match token.consume(db) {
+            Ok(t) => Ok(t),
+            Err(_) => Ok(false),
+        }
     }
 }
-
