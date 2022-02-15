@@ -19,6 +19,7 @@ pub use {
     token::{
         Token,
         consumable_token::{
+            Consumable,
             ConsumableToken,
             consumer::Consumer,
         },
