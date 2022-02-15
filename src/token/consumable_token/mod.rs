@@ -8,6 +8,10 @@ use {
     },
     consumer::Consumer,
     crate::{
+        user::{
+            clearance::Clearance,
+            User,
+        },
         error::{
             MatchRustersError,
             RustersError,
@@ -19,6 +23,7 @@ use {
         core::{
             DbCtx,
             PrimaryKey,
+            UniqueName,
         },
         derive::Worm,
     },
@@ -53,16 +58,15 @@ impl ConsumableToken {
     pub fn can_consume<'a>(
         db: &mut impl DbCtx,
         hash: impl AsRef<str>,
-        consumer_name: impl AsRef<str>,
+        consumer: Consumer,
     ) -> Result<Self, RustersError> {
         let h = hash.as_ref();
-        let cn = consumer_name.as_ref();
         return Query::<Self>::select()
             .join_fk::<Token>().join_and()
             .join_fk_eq::<Token>(Token::HASH, &h).join_and()
             .join_fk_gt::<Token>(Token::EXPIRED_DT, &Utc::now())
             .join_fk::<Consumer>().join_and()
-            .join_fk_eq::<Consumer>(Consumer::NAME, &cn)
+            .join_fk_eq::<Consumer>(Consumer::NAME, &consumer.get_name())
             .execute_row(db)
             .quick_match();
     }
@@ -86,3 +90,27 @@ impl ConsumableToken {
         }
     }
 }
+pub trait Consumable {
+    const UNIQUE_KEY: &'static str;
+    fn get(db: &mut impl DbCtx) -> Result<Consumer, RustersError> {
+        Consumer::get_or_create(db, Self::UNIQUE_KEY)
+    }
+    fn can_consume(
+        db: &mut impl DbCtx, hash: impl AsRef<str>
+    ) -> Result<ConsumableToken, RustersError> {
+        let consumer = Self::get(db)?;
+        ConsumableToken::can_consume(db, hash, consumer)
+    }
+    fn use_token(
+        db: &mut impl DbCtx, hash: impl AsRef<str>, username: impl AsRef<str>,
+        password: impl AsRef<str>, clearance: Clearance,
+    ) -> Result<(), RustersError> {
+        let token = Self::can_consume(db, hash)?;
+        User::create(
+            db, username.as_ref(), password.as_ref(), clearance
+        )?;
+        token.consume(db)?;
+        Ok(())
+    }
+}
+
