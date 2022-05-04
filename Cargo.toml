@@ -1,6 +1,6 @@
 [package]
 name = "rusters"
-version = "0.1.0"
+version = "1.0.0"
 authors = ["Frankie Baffa <frankie.baffa@gentryhealthservices.com>"]
 edition = "2021"
 
