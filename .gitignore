@@ -2,3 +2,4 @@ Cargo.lock
 /target
 .env
 RustersDb.db
+test_dbs/*
