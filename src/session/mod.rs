@@ -1,12 +1,7 @@
 pub mod cookie;
 use {
-    buildlite::{
-        BuildliteError,
-        Query,
-    },
     chrono::{
         DateTime,
-        Duration,
         Utc,
     },
     crate::{
@@ -14,174 +9,73 @@ use {
             MatchRustersError,
             RustersError,
         },
-        hash::{ Basic, Hash, Secure },
         token::Token,
-        user::User,
     },
-    cookie::SessionCookie,
-    lazy_static::lazy_static,
-    std::sync::Mutex,
-    worm::{
-        core::{
-            DbCtx,
-            PrimaryKey,
-            UniqueNameModel,
-        },
-        derive::Worm,
-    },
+    sqlx::{ FromRow, SqlitePool, query_as, query, },
 };
-
-lazy_static! {
-    static ref EXPIRES: Mutex<Duration> = Mutex::new(Duration::hours(1));
-}
-#[derive(Worm)]
-#[dbmodel(table(schema="RustersDb", name="Sessions", alias="session"))]
+#[derive(FromRow)]
 pub struct Session {
-    #[dbcolumn(column(name="PK", primary_key))]
     pk: i64,
-    #[dbcolumn(column(name="Token_PK", foreign_key="Token", insertable))]
     token_pk: i64,
-    #[dbcolumn(column(name="Created_DT", insertable, utc_now))]
     created_dt: DateTime<Utc>,
 }
 impl Session {
-    fn expires() -> Duration {
-        EXPIRES.lock().unwrap().clone()
+    pub fn get_pk(&self) -> i64 {
+        self.pk
     }
-    pub fn set_expires(dur: Duration) {
-        (*EXPIRES.lock().unwrap()) = dur;
+    pub fn get_token_pk(&self) -> i64 {
+        self.token_pk
     }
-    pub fn create_new(
-        db: &mut impl DbCtx
-    ) -> Result<(Session, String), RustersError> {
-        let hash = Basic::rand()?;
-        let token = Token::from_hash(db, hash, *EXPIRES.lock().unwrap())?;
-        let session = Session::insert_new(db, token.get_id()).quick_match()?;
-        return Ok((session, token.get_hash()));
+    pub fn get_created_dt(&self) -> DateTime<Utc> {
+        self.created_dt
     }
-    pub fn get_active<'a>(db: &mut impl DbCtx, hash: &'a str) -> Result<Session, RustersError> {
-        let now: DateTime<Utc> = Utc::now();
-        let session = Query::<Session>::select()
-            .join_fk::<Token>().join_and()
-            .join_fk_gt::<Token>(Token::EXPIRED_DT, &now).join_and()
-            .join_fk_eq::<Token>(Token::HASH, &hash)
-            .execute_row(db)
-            .quick_match()?;
-        let exp: DateTime<Utc> = Utc::now() + Self::expires();
-        session.update_expired(db, exp)?;
-        return Ok(session);
+    pub async fn lookup_by_token<'a>(
+        db: &SqlitePool, token: Token
+    ) -> Result<Session, RustersError> {
+        query_as::<_, Session>("
+            select
+                PK,
+                Token_PK,
+                Created_DT
+            from Sessions as s
+            where s.Token_PK = $1"
+        ).bind(token.get_hash())
+            .fetch_one(db)
+            .await
+            .quick_match()
     }
-    pub fn get_hash<'a>(&self, db: &mut impl DbCtx) -> Result<String, RustersError> {
-        let token = Query::<Token>::select()
-            .join::<Self>()
-            .where_eq::<Self>(Self::PRIMARY_KEY, &self.get_id())
-            .execute_row(db)
-            .quick_match()?;
-        return Ok(token.get_hash());
+    pub async fn lookup_by_pk<'a>(
+        db: &SqlitePool, pk: i64
+    ) -> Result<Session, RustersError> {
+        query_as::<_, Session>("
+            select
+                PK,
+                Token_PK,
+                Created_DT
+            from Sessions as s
+            where s.PK = $1"
+        ).bind(pk)
+            .fetch_one(db)
+            .await
+            .quick_match()
     }
-    const LOGIN_COOKIE: &'static str = "LOGIN";
-    pub fn delete_cookie<'a>(&self, db: &mut impl DbCtx, name: &'a str) -> Result<bool, RustersError> {
-        self.update_expired(db, Utc::now() + Self::expires())?;
-        let aug = Query::<SessionCookie>::update()
-            .set(SessionCookie::ACTIVE, &0)
-            .where_eq::<SessionCookie>(SessionCookie::SESSION_PK, &self.pk).and()
-            .where_eq::<SessionCookie>(SessionCookie::NAME, &name).and()
-            .where_eq::<SessionCookie>(SessionCookie::ACTIVE, &1)
-            .execute_update(db)
-            .quick_match()?;
-        if aug > 0 {
-            return Ok(true);
-        } else {
-            return Ok(false);
-        }
-    }
-    pub fn read_cookie<'a>(&self, db: &mut impl DbCtx, name: &'a str) -> Result<Option<SessionCookie>, RustersError> {
-        self.update_expired(db, Utc::now() + Self::expires())?;
-        let cookie_res = Query::<SessionCookie>::select()
-            .where_eq::<SessionCookie>(SessionCookie::SESSION_PK, &self.get_id()).and()
-            .where_eq::<SessionCookie>(SessionCookie::NAME, &name).and()
-            .where_eq::<SessionCookie>(SessionCookie::ACTIVE, &1)
-            .execute_row(db);
-        match cookie_res {
-            Ok(c) => return Ok(Some(c)),
-            Err(e) => return match e {
-                BuildliteError::NoRowsError => Ok(None),
-                _ => Err(e).quick_match()?,
-            },
-        }
-    }
-    pub fn set_cookie<'a>(&self, db: &mut impl DbCtx, name: &'a str, value: &'a str) -> Result<SessionCookie, RustersError> {
-        self.update_expired(db, Utc::now() + Self::expires())?;
-        let cookie = self.read_cookie(db, name)?;
-        if cookie.is_some() {
-            self.delete_cookie(db, name)?;
-            match SessionCookie::insert_new(
-                db, self.get_id(), name.to_string(), value.to_string(),
-            ).quick_match() {
-                Ok(c) => Ok(c),
-                Err(e) => {
-                    println!("{}", e);
-                    Err(e)
-                },
-            }
-        } else {
-            match SessionCookie::insert_new(
-                db, self.get_id(), name.to_string(), value.to_string()
-            ).quick_match() {
-                Ok(c) => Ok(c),
-                Err(e) => {
-                    println!("{}", e);
-                    Err(e)
-                },
-            }
-        }
-    }
-    pub fn is_logged_in<'s>(&self, db: &mut impl DbCtx) -> Result<Option<User>, RustersError> {
-        self.update_expired(db, Utc::now() + Self::expires())?;
-        let login_cookie_opt = self.read_cookie(db, Self::LOGIN_COOKIE)?;
-        if login_cookie_opt.is_none() {
-            return Ok(None);
-        }
-        let login_cookie = login_cookie_opt.unwrap();
-        let user = User::get_by_name(db, &login_cookie.get_value()).quick_match()?;
-        return Ok(Some(user));
-    }
-    pub fn login<'a>(&self, db: &mut impl DbCtx, username: &'a str, password: &'a str) -> Result<User, RustersError> {
-        self.update_expired(db, Utc::now())?;
-        let user = User::get_by_name(db, username).quick_match()?;
-        let stored_hash = user.get_password_hash();
-        let verified = Secure::validate(password, stored_hash)?;
-        if !verified {
-            return Err(RustersError::InvalidCredentialsError);
-        }
-        self.set_cookie(db, Session::LOGIN_COOKIE, &username)?;
-        return Ok(user);
-    }
-    pub fn log_out<'a>(&self, db: &mut impl DbCtx) -> Result<bool, RustersError> {
-        let user_opt = self.is_logged_in(db)?;
-        if user_opt.is_some() {
-            return Ok(self.delete_cookie(db, Self::LOGIN_COOKIE)?);
-        } else {
-            return Ok(false);
-        }
-    }
-    fn update_expired(&self, db: &mut impl DbCtx, new_exp: DateTime<Utc>) -> Result<bool, RustersError> {
-        let token = Query::<Token>::select()
-            .join::<Session>()
-            .where_eq::<Session>(Session::PK, &self.pk)
-            .execute_row(db)
-            .quick_match()?;
-        let aug = Query::<Token>::update()
-            .set(Token::EXPIRED_DT, &new_exp)
-            .where_eq::<Token>(Token::PK, &token.get_id())
-            .execute_update(db)
-            .quick_match()?;
-        if aug == 1 {
-            return Ok(true);
-        } else if aug > 1 {
-            panic!("More than one row updated");
-        } else {
-            return Ok(false);
-        }
+    pub async fn insert_new(
+        db: &SqlitePool, token: &Token
+    ) -> Result<Self, RustersError> {
+        let pk = query("
+            insert into Sessions (
+                Token_PK,
+                Created_DT
+            ) values (
+                $1,
+                $2
+            )"
+        ).bind(token.get_pk())
+            .bind(Utc::now())
+            .execute(db)
+            .await
+            .quick_match()?
+            .last_insert_rowid();
+        Self::lookup_by_pk(db, pk).await
     }
 }

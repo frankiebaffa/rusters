@@ -11,6 +11,7 @@ pub use {
         MatchRustersError,
         RustersError,
     },
+    hash::{ Basic, Hash, Secure, },
     migrator::RustersMigrator,
     session::{
         cookie::SessionCookie,
@@ -19,13 +20,9 @@ pub use {
     token::{
         Token,
         consumable_token::{
-            Consumable,
             ConsumableToken,
             consumer::Consumer,
         },
     },
-    user::{
-        clearance::Clearance,
-        User,
-    },
+    user::User,
 };

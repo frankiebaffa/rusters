@@ -3,22 +3,160 @@ use {
         DateTime,
         Utc,
     },
-    crate::session::Session,
-    worm::derive::Worm,
+    crate::{
+        error::{
+            MatchRustersError,
+            RustersError,
+        },
+        session::Session,
+        user::User,
+    },
+    sqlx::{ FromRow, SqlitePool, query, query_as, },
 };
-#[derive(Worm)]
-#[dbmodel(table(schema="RustersDb",name="SessionCookies",alias="sessioncookie"))]
+#[derive(FromRow)]
 pub struct SessionCookie {
-    #[dbcolumn(column(name="PK", primary_key))]
     pk: i64,
-    #[dbcolumn(column(name="Session_PK", foreign_key="Session", insertable))]
     session_pk: i64,
-    #[dbcolumn(column(name="Name", insertable, unique_name))]
     name: String,
-    #[dbcolumn(column(name="Value", insertable))]
     value: String,
-    #[dbcolumn(column(name="Active", active_flag))]
     active: bool,
-    #[dbcolumn(column(name="Created_DT", insertable, utc_now))]
     created_dt: DateTime<Utc>,
+}
+impl SessionCookie {
+    pub fn get_pk(&self) -> i64 {
+        self.pk
+    }
+    pub fn get_session_pk(&self) -> i64 {
+        self.session_pk
+    }
+    pub fn get_name(&self) -> String {
+        self.name.clone()
+    }
+    pub fn get_value(&self) -> String {
+        self.value.clone()
+    }
+    pub fn get_active(&self) -> bool {
+        self.active
+    }
+    pub fn get_created_dt(&self) -> DateTime<Utc> {
+        self.created_dt
+    }
+    pub async fn lookup_by_pk(
+        db: &SqlitePool, pk: i64
+    ) -> Result<Self, RustersError> {
+        query_as::<_, Self>("
+            select
+                PK,
+                Session_PK,
+                Name,
+                Value,
+                Active,
+                Created_DT
+            from SessionCookies
+            where PK = $1"
+        ).bind(pk)
+            .fetch_one(db)
+            .await
+            .quick_match()
+    }
+    pub async fn create<'a>(
+        db: &SqlitePool, session: &Session, name: &'a str, value: &'a str
+    ) -> Result<Self, RustersError> {
+        let pk = query("
+            insert into SessionCookies (
+                Session_PK,
+                Name,
+                Value,
+                Active,
+                Created_DT
+            ) values (
+                $1,
+                $2,
+                $3,
+                $4,
+                $5
+            )"
+        ).bind(session.get_pk())
+            .bind(name)
+            .bind(value)
+            .bind(1)
+            .bind(Utc::now())
+            .execute(db)
+            .await
+            .quick_match()?
+            .last_insert_rowid();
+        Self::lookup_by_pk(db, pk).await
+    }
+    pub async fn delete<'a>(
+        db: &SqlitePool, session: &Session, name: &'a str
+    ) -> Result<(), RustersError> {
+        query("
+            update SessionCookies
+            set Active = 0
+            where Session_PK = $1
+            and Name = $2
+            and Active = 1"
+        ).bind(session.get_pk())
+            .bind(name)
+            .execute(db)
+            .await
+            .quick_match()?;
+        Ok(())
+    }
+    pub async fn read<'a>(
+        db: &SqlitePool, session: &Session, name: &'a str
+    ) -> Result<Option<Self>, RustersError> {
+        let cookies = query_as::<_, Self>("
+            select
+                PK,
+                Session_PK,
+                Name,
+                Value,
+                Active,
+                Created_DT
+            from SessionCookies
+            where Session_PK = $1
+            and Name = $2
+            and Active = 1"
+        ).bind(session.get_pk())
+            .bind(name)
+            .fetch_all(db)
+            .await
+            .quick_match()?;
+        Ok(cookies.into_iter().nth(0))
+    }
+    pub async fn set<'a>(
+        db: &SqlitePool, session: &Session, name: &'a str, value: &'a str
+    ) -> Result<Self, RustersError> {
+        let existing = Self::read(db, session, name).await?;
+        match existing {
+            Some(cookie) => {
+                if cookie.value.eq(value) {
+                    Ok(cookie)
+                } else {
+                    Self::delete(db, session, name).await?;
+                    Self::create(db, session, name, value).await
+                }
+            },
+            None => {
+                Self::create(db, session, name, value).await
+            },
+        }
+    }
+    pub const LOGIN_COOKIE: &'static str = "LOGIN";
+    pub async fn has_login_cookie(
+        db: &SqlitePool, session: &Session
+    ) -> Result<bool, RustersError> {
+        Ok(Self::read(db, session, Self::LOGIN_COOKIE).await?.is_some())
+    }
+    pub async fn login(
+        db: &SqlitePool, session: &Session, user: &User
+    ) -> Result<Self, RustersError> {
+        Self::set(db, session, Self::LOGIN_COOKIE, &user.get_username()).await
+    }
+    pub async fn logout(
+        db: &SqlitePool, session: &Session
+    ) -> Result<(), RustersError> {
+        Self::delete(db, session, Self::LOGIN_COOKIE).await
+    }
 }

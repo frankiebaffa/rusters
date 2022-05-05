@@ -1,7 +1,6 @@
 use {
     bcrypt::BcryptError,
-    buildlite::BuildliteError,
-    worm::core::sql::Error as RusqliteError,
+    sqlx::Error as SqlxError,
     std::io::Error as IOError,
 };
 #[derive(Debug)]
@@ -10,9 +9,8 @@ pub enum RustersError {
     InvalidCredentialsError,
     IOError(IOError),
     NotLoggedInError,
-    SQLError(RusqliteError),
+    SQLError(SqlxError),
     NoSessionError,
-    BuildliteError(BuildliteError),
 }
 impl std::fmt::Display for RustersError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -38,10 +36,6 @@ impl std::fmt::Display for RustersError {
             RustersError::NoSessionError => {
                 f.write_str("The session is expired or does not exist")
             },
-            RustersError::BuildliteError(e) => {
-                let msg = &format!("{}", e);
-                f.write_str(msg)
-            },
         }
     }
 }
@@ -57,7 +51,7 @@ impl<T> MatchRustersError<T, BcryptError> for Result<T, BcryptError> {
         };
     }
 }
-impl<T> MatchRustersError<T, RusqliteError> for Result<T, RusqliteError> {
+impl<T> MatchRustersError<T, SqlxError> for Result<T, SqlxError> {
     fn quick_match(self) -> Result<T, RustersError> {
         return match self {
             Ok(s) => Ok(s),
@@ -70,14 +64,6 @@ impl<T> MatchRustersError<T, std::io::Error> for Result<T, std::io::Error> {
         return match self {
             Ok(s) => Ok(s),
             Err(e) => Err(RustersError::IOError(e)),
-        };
-    }
-}
-impl<T> MatchRustersError<T, BuildliteError> for Result<T, BuildliteError> {
-    fn quick_match(self) -> Result<T, RustersError> {
-        return match self {
-            Ok(s) => Ok(s),
-            Err(e) => Err(RustersError::BuildliteError(e)),
         };
     }
 }

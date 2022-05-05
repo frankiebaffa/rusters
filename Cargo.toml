@@ -1,20 +1,24 @@
 [package]
 name = "rusters"
 version = "1.0.0"
-authors = ["Frankie Baffa <frankie.baffa@gentryhealthservices.com>"]
+authors = ["Frankie Baffa <frankiebaffa@gmail.com>"]
 edition = "2021"
-
-[dependencies]
-base64 = "0.13"
-bcrypt = "0.10"
-buildlite = { git = "https://github.com/frankiebaffa/buildlite", branch = "master" }
-chrono = "0.4"
-dotenv = "0.15"
-lazy_static = "1.4"
-migaton = { git = "https://github.com/frankiebaffa/migaton", branch = "master" }
-rusqlite = { version = "0.25", features = ["bundled"] }
-serial_test = "*"
-sha3 = "0.9"
-uuid = { version = "0.8", features = ["v4"]}
-worm = { git = "https://github.com/frankiebaffa/worm", branch = "master", features = ["derive"] }
-
+[dependencies.async-std]
+version = "1.11.0"
+features = [ "attributes" ]
+[dependencies.base64]
+version = "0.13"
+[dependencies.bcrypt]
+version = "0.10"
+[dependencies.chrono]
+version = "0.4"
+[dependencies.dotenv]
+version = "0.15"
+[dependencies.sha3]
+version = "0.9"
+[dependencies.sqlx]
+version = "0.5.13"
+features = [ "runtime-async-std-native-tls", "sqlite", "chrono" ]
+[dependencies.uuid]
+version = "0.8"
+features = [ "v4" ]
