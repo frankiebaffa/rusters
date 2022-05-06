@@ -96,10 +96,29 @@ impl Token {
         let hash = Secure::rand()?;
         Self::insert_new(db, hash, expires).await
     }
+    pub async fn check_active_by_hash<'a>(
+        db: &SqlitePool, hash: &'a str
+    ) -> Result<Option<Self>, RustersError> {
+        let tokens = query_as::<_, Token>("
+            select
+                pk,
+                hash,
+                created_dt,
+                expired_dt
+            from Tokens
+            where hash = $1
+            and expired_dt > $2"
+        ).bind(hash)
+            .bind(Utc::now())
+            .fetch_all(db)
+            .await
+            .quick_match()?;
+        Ok(tokens.into_iter().nth(0))
+    }
     pub async fn lookup_active_by_hash<'a>(
         db: &SqlitePool, hash: &'a str
     ) -> Result<Self, RustersError> {
-        Ok(query_as::<_, Token>("
+        query_as::<_, Token>("
             select
                 pk,
                 hash,
@@ -112,8 +131,7 @@ impl Token {
             .bind(Utc::now())
             .fetch_one(db)
             .await
-            .quick_match()?
-        )
+            .quick_match()
     }
     pub async fn update_expire(
         &mut self, db: &SqlitePool, now_plus: Option<Duration>
