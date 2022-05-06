@@ -39,25 +39,43 @@ impl ConsumableToken {
     ) -> Result<Self, RustersError> {
         query_as::<_, Self>("
             select
-                PK,
-                Token_PK,
-                Consumer_PK,
-                Created_DT
+                pk,
+                token_pk,
+                consumer_pk,
+                created_dt
             from ConsumableTokens
-            where PK = $1"
+            where pk = $1"
         ).bind(pk)
             .fetch_one(db)
             .await
             .quick_match()
     }
+    pub async fn lookup(
+        db: &SqlitePool, token: &Token, consumer: &Consumer
+    ) -> Result<Self, RustersError> {
+        query_as::<_, Self>("
+            select
+                pk,
+                token_pk,
+                consumer_pk,
+                created_dt
+            from ConsumableTokens
+            where token_pk = $1
+            and consumer_pk = $2"
+        ).bind(token.get_pk())
+            .bind(consumer.get_pk())
+            .fetch_one(db)
+            .await
+            .quick_match()
+    }
     pub async fn insert_new(
-        db: &SqlitePool, token: Token, consumer: Consumer
+        db: &SqlitePool, token: &Token, consumer: &Consumer
     ) -> Result<Self, RustersError> {
         let pk = query("
             insert into ConsumableTokens (
-                Token_PK,
-                Consumer_PK,
-                Created_DT
+                token_pk,
+                consumer_pk,
+                created_dt
             ) values (
                 $1,
                 $2,

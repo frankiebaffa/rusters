@@ -34,12 +34,12 @@ impl Consumer {
     ) -> Result<Self, RustersError> {
         query_as::<_, Self>("
             select
-                PK,
-                Name,
-                IsActive,
-                Created_DT
+                pk,
+                name,
+                is_active,
+                created_dt
             from Consumers
-            where PK = $1"
+            where pk = $1"
         ).bind(pk)
             .fetch_one(db)
             .await
@@ -50,12 +50,12 @@ impl Consumer {
     ) -> Result<Self, RustersError> {
         query_as::<_, Self>("
             select
-                PK,
-                Name,
-                IsActive,
-                Created_DT
+                pk,
+                name,
+                is_active,
+                created_dt
             from Consumers
-            where Name = $1"
+            where name = $1"
         ).bind(name)
             .fetch_one(db)
             .await
@@ -66,9 +66,9 @@ impl Consumer {
     ) -> Result<Self, RustersError> {
         let pk = query("
             insert into Consumers (
-                Name,
-                IsActive,
-                Created_DT
+                name,
+                is_active,
+                created_dt
             ) values (
                 $1,
                 $2,

@@ -34,11 +34,11 @@ impl Session {
     ) -> Result<Session, RustersError> {
         query_as::<_, Session>("
             select
-                PK,
-                Token_PK,
-                Created_DT
+                pk,
+                token_pk,
+                created_dt
             from Sessions as s
-            where s.Token_PK = $1"
+            where s.token_pk = $1"
         ).bind(token.get_hash())
             .fetch_one(db)
             .await
@@ -49,11 +49,11 @@ impl Session {
     ) -> Result<Session, RustersError> {
         query_as::<_, Session>("
             select
-                PK,
-                Token_PK,
-                Created_DT
+                pk,
+                token_pk,
+                created_dt
             from Sessions as s
-            where s.PK = $1"
+            where s.pk = $1"
         ).bind(pk)
             .fetch_one(db)
             .await
@@ -64,8 +64,8 @@ impl Session {
     ) -> Result<Self, RustersError> {
         let pk = query("
             insert into Sessions (
-                Token_PK,
-                Created_DT
+                token_pk,
+                created_dt
             ) values (
                 $1,
                 $2

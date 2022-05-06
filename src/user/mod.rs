@@ -21,7 +21,7 @@ pub struct User {
     username: String,
     password_hash: String,
     salt: String,
-    active: bool,
+    is_active: bool,
     created_dt: DateTime<Utc>,
 }
 impl User {
@@ -37,8 +37,8 @@ impl User {
     pub fn get_username(&self) -> String {
         self.username.clone()
     }
-    pub fn get_active(&self) -> bool {
-        self.active
+    pub fn get_is_active(&self) -> bool {
+        self.is_active
     }
     pub fn get_created_dt(&self) -> DateTime<Utc> {
         self.created_dt
@@ -48,14 +48,15 @@ impl User {
     ) -> Result<Self, RustersError> {
         query_as::<_, Self>("
             select
-                PK,
-                Username,
-                PasswordHash,
-                Salt,
-                Active,
-                Created_DT
+                pk,
+                username,
+                password_hash,
+                salt,
+                is_active,
+                created_dt
             from Users
-            where PK = $1"
+            where pk = $1
+            and is_active = 1;"
         ).bind(pk)
             .fetch_one(db)
             .await
@@ -66,14 +67,15 @@ impl User {
     ) -> Result<Self, RustersError> {
         query_as::<_, Self>("
             select
-                PK,
-                Username,
-                PasswordHash,
-                Salt,
-                Active,
-                Created_DT
+                pk,
+                username,
+                password_hash,
+                salt,
+                is_active,
+                created_dt
             from Users
-            where Name = $1"
+            where username = $1
+            and is_active = 1;"
         ).bind(name)
             .fetch_one(db)
             .await
@@ -87,11 +89,11 @@ impl User {
         let hash = hashed.get_hash();
         let pk = query("
             insert into Users (
-                Username,
-                PasswordHash,
-                Salt,
-                Active,
-                Created_DT
+                username,
+                password_hash,
+                salt,
+                is_active,
+                created_dt
             ) values (
                 $1,
                 $2,

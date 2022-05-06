@@ -18,7 +18,7 @@ impl RustersMigrator {
     }
     async fn tbl_users(db: &SqlitePool) -> Result<(), RustersError> {
         let exists = query_as::<_, (i64,)>("
-            select count(Name)
+            select count(name)
             from sqlite_master
             where type = 'table'
             and name = 'Users'
@@ -29,16 +29,16 @@ impl RustersMigrator {
         if !exists {
             query("
                 create table Users (
-                    PK integer not null primary key autoincrement,
-                    Username text not null unique,
-                    PasswordHash text not null,
-                    Salt text not null,
-                    Active integer not null default 1,
-                    Created_DT text not null
+                    pk integer not null primary key autoincrement,
+                    username text not null unique,
+                    password_hash text not null,
+                    salt text not null,
+                    is_active integer not null default 1,
+                    created_dt text not null
                 );
                 create unique index UsersUniqueUsername
-                on Users (Username)
-                where Active = 1;"
+                on Users (username)
+                where is_active = 1;"
             ).execute(db)
                 .await
                 .quick_match()?;
@@ -47,7 +47,7 @@ impl RustersMigrator {
     }
     async fn tbl_tokens(db: &SqlitePool) -> Result<(), RustersError> {
         let exists = query_as::<_, (i64,)>("
-            select count(Name)
+            select count(name)
             from sqlite_master
             where Name = 'Tokens'
             and Type = 'table';"
@@ -57,10 +57,10 @@ impl RustersMigrator {
         if !exists {
             query("
                 create table Tokens (
-                    PK integer not null primary key autoincrement,
-                    Hash text not null unique,
-                    Created_DT not null,
-                    Expired_DT not null
+                    pk integer not null primary key autoincrement,
+                    hash text not null unique,
+                    created_dt not null,
+                    expired_dt not null
                 );"
             ).execute(db)
                 .await
@@ -80,10 +80,10 @@ impl RustersMigrator {
         if !exists {
             query("
                 create table Sessions (
-                        PK integer not null primary key autoincrement,
-                        Token_PK integer not null,
-                        Created_DT text not null,
-                        foreign key (Token_PK) references Tokens (PK)
+                        pk integer not null primary key autoincrement,
+                        token_pk integer not null,
+                        created_dt text not null,
+                        foreign key (token_pk) references Tokens (pk)
                     );"
             ).execute(db)
                 .await
@@ -93,7 +93,7 @@ impl RustersMigrator {
     }
     async fn tbl_sessioncookies(db: &SqlitePool) -> Result<(), RustersError> {
         let exists = query_as::<_, (i64,)>("
-            select count(Name)
+            select count(name)
             from sqlite_master
             where type = 'table'
             and name = 'SessionCookies'
@@ -104,20 +104,20 @@ impl RustersMigrator {
         if !exists {
             query("
                 create table SessionCookies (
-                    PK integer not null primary key autoincrement,
-                    Session_PK integer not null,
-                    Name text not null,
-                    Active integer not null default 1,
-                    Value text not null,
-                    Created_DT text not null,
-                    foreign key (Session_PK) references Sessions (PK)
+                    pk integer not null primary key autoincrement,
+                    session_pk integer not null,
+                    name text not null,
+                    is_active integer not null default 1,
+                    value text not null,
+                    created_dt text not null,
+                    foreign key (session_pk) references Sessions (pk)
                 );
                 create unique index SessionCookiesUniqueName
                 on SessionCookies (
-                    Session_PK,
-                    Name
+                    session_pk,
+                    name
                 )
-                where Active = 1;"
+                where is_active = 1;"
             ).execute(db)
                 .await
                 .quick_match()?;
@@ -136,14 +136,14 @@ impl RustersMigrator {
         if !exists {
             query("
                 create table Consumers (
-                    PK integer primary key autoincrement,
-                    Name text not null,
-                    IsActive integer not null default 1,
-                    Created_DT text not null
+                    pk integer primary key autoincrement,
+                    name text not null,
+                    is_active integer not null default 1,
+                    created_dt text not null
                 );
                 create unique index ConsumersUniqueName
-                on Consumers (Name)
-                where IsActive = 1;"
+                on Consumers (name)
+                where is_active = 1;"
             ).execute(db)
                 .await
                 .quick_match()?;
@@ -162,12 +162,12 @@ impl RustersMigrator {
         if !exists {
             query("
                 create table ConsumableTokens (
-                    PK integer primary key autoincrement,
-                    Token_PK integer not null,
-                    Consumer_PK integer not null,
-                    Created_DT text not null,
-                    foreign key (Token_PK) references Tokens (PK),
-                    foreign key (Consumer_PK) references Consumers (PK)
+                    pk integer primary key autoincrement,
+                    token_pk integer not null,
+                    consumer_pk integer not null,
+                    created_dt text not null,
+                    foreign key (token_pk) references Tokens (pk),
+                    foreign key (consumer_pk) references Consumers (pk)
                 );"
             ).execute(db)
                 .await

@@ -19,7 +19,7 @@ pub struct SessionCookie {
     session_pk: i64,
     name: String,
     value: String,
-    active: bool,
+    is_active: bool,
     created_dt: DateTime<Utc>,
 }
 impl SessionCookie {
@@ -35,8 +35,8 @@ impl SessionCookie {
     pub fn get_value(&self) -> String {
         self.value.clone()
     }
-    pub fn get_active(&self) -> bool {
-        self.active
+    pub fn get_is_active(&self) -> bool {
+        self.is_active
     }
     pub fn get_created_dt(&self) -> DateTime<Utc> {
         self.created_dt
@@ -46,14 +46,15 @@ impl SessionCookie {
     ) -> Result<Self, RustersError> {
         query_as::<_, Self>("
             select
-                PK,
-                Session_PK,
-                Name,
-                Value,
-                Active,
-                Created_DT
+                pk,
+                session_pk,
+                name,
+                value,
+                is_active,
+                created_dt
             from SessionCookies
-            where PK = $1"
+            where pk = $1
+            and is_active = 1;"
         ).bind(pk)
             .fetch_one(db)
             .await
@@ -64,11 +65,11 @@ impl SessionCookie {
     ) -> Result<Self, RustersError> {
         let pk = query("
             insert into SessionCookies (
-                Session_PK,
-                Name,
-                Value,
-                Active,
-                Created_DT
+                session_pk,
+                name,
+                value,
+                is_active,
+                created_dt
             ) values (
                 $1,
                 $2,
@@ -92,10 +93,10 @@ impl SessionCookie {
     ) -> Result<(), RustersError> {
         query("
             update SessionCookies
-            set Active = 0
-            where Session_PK = $1
-            and Name = $2
-            and Active = 1"
+            set is_active = 0
+            where session_pk = $1
+            and name = $2
+            and is_active = 1"
         ).bind(session.get_pk())
             .bind(name)
             .execute(db)
@@ -108,16 +109,16 @@ impl SessionCookie {
     ) -> Result<Option<Self>, RustersError> {
         let cookies = query_as::<_, Self>("
             select
-                PK,
-                Session_PK,
-                Name,
-                Value,
-                Active,
-                Created_DT
+                pk,
+                session_pk,
+                name,
+                value,
+                is_active,
+                created_dt
             from SessionCookies
-            where Session_PK = $1
-            and Name = $2
-            and Active = 1"
+            where session_pk = $1
+            and name = $2
+            and is_active = 1"
         ).bind(session.get_pk())
             .bind(name)
             .fetch_all(db)

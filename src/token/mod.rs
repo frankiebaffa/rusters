@@ -15,7 +15,6 @@ use {
             Hash,
             Secure,
         },
-        session::Session,
     },
     sqlx::{ FromRow, SqlitePool, query, query_as, },
 };
@@ -43,19 +42,20 @@ impl Token {
         Duration::hours(1)
     }
     pub async fn lookup_by_pk(db: &SqlitePool, pk: i64) -> Result<Self, RustersError> {
-        Ok(
-            query_as::<_, Token>("
-                select
-                    pk,
-                    hash,
-                    created_dt,
-                    expired_dt
-                from Tokens
-                where pk = $1;"
-            ).bind(pk)
-                .fetch_one(db)
-                .await.quick_match()?
-        )
+        let now = Utc::now();
+        query_as::<_, Token>("
+            select
+                pk,
+                hash,
+                created_dt,
+                expired_dt
+            from Tokens
+            where pk = $1
+            and expired_dt > $2"
+        ).bind(pk)
+            .bind(now)
+            .fetch_one(db)
+            .await.quick_match()
     }
     pub async fn insert_new(
         db: &SqlitePool, hash: impl Hash, expires: Option<Duration>
@@ -115,25 +115,6 @@ impl Token {
             .quick_match()?
         )
     }
-    pub async fn lookup_active_by_session(
-        db: &SqlitePool, session: Session
-    ) -> Result<Self, RustersError> {
-        Ok(query_as::<_, Token>("
-            select
-                pk,
-                hash,
-                created_dt,
-                expired_dt
-            from Tokens
-            where pk = $1
-            and expired_dt > $2"
-        ).bind(session.get_token_pk())
-            .bind(Utc::now())
-            .fetch_one(db)
-            .await
-            .quick_match()?
-        )
-    }
     pub async fn update_expire(
         &mut self, db: &SqlitePool, now_plus: Option<Duration>
     ) -> Result<(), RustersError> {
@@ -153,13 +134,12 @@ impl Token {
         Ok(())
     }
     /// Forces a token to expire
-    pub async fn force_expire(&self, db: &SqlitePool) -> Result<(), RustersError> {
-        let safe_now = Utc::now() - Duration::seconds(-1);
+    pub async fn force_expire(self, db: &SqlitePool) -> Result<(), RustersError> {
         query("
             update Tokens
             set expired_dt = $1
             where pk = $2"
-        ).bind(safe_now)
+        ).bind(Utc::now())
             .bind(self.get_pk())
             .execute(db)
             .await
