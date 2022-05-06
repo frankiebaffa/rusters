@@ -98,6 +98,7 @@ async fn create_and_consume_token() {
     t.force_expire(&db).await.unwrap();
     let t_2 = Token::lookup_active_by_hash(&db, &t_hash).await;
     assert!(t_2.is_err());
+    delete_db_file_if_exists(&db_name);
 }
 const USERNAME: &'static str = "test_user_1";
 const PASSWORD: &'static str = "$this_is_a_password_1";
