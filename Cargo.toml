@@ -1,6 +1,6 @@
 [package]
 name = "rusters"
-version = "1.0.0"
+version = "2.0.0-beta1"
 authors = ["Frankie Baffa <frankiebaffa@gmail.com>"]
 edition = "2021"
 [dependencies.async-std]
