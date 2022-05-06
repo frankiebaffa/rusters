@@ -57,7 +57,7 @@ impl Token {
             .fetch_one(db)
             .await.quick_match()
     }
-    pub async fn insert_new(
+    pub async fn insert(
         db: &SqlitePool, hash: impl Hash, expires: Option<Duration>
     ) -> Result<Self, RustersError> {
         let now = Utc::now();
@@ -84,17 +84,17 @@ impl Token {
             .last_insert_rowid();
         Self::lookup_by_pk(db, pk).await
     }
-    pub async fn insert_basic(
+    pub async fn basic(
         db: &SqlitePool, expires: Option<Duration>
     ) -> Result<Self, RustersError> {
         let hash = Basic::rand()?;
-        Self::insert_new(db, hash, expires).await
+        Self::insert(db, hash, expires).await
     }
-    pub async fn insert_secure(
+    pub async fn secure(
         db: &SqlitePool, expires: Option<Duration>
     ) -> Result<Self, RustersError> {
         let hash = Secure::rand()?;
-        Self::insert_new(db, hash, expires).await
+        Self::insert(db, hash, expires).await
     }
     pub async fn possible<'a>(
         db: &SqlitePool, hash: &'a str
@@ -133,7 +133,7 @@ impl Token {
             .await
             .quick_match()
     }
-    pub async fn update_expire(
+    pub async fn refresh(
         &mut self, db: &SqlitePool, now_plus: Option<Duration>
     ) -> Result<(), RustersError> {
         let exp_dur = match now_plus {
@@ -152,7 +152,7 @@ impl Token {
         Ok(())
     }
     /// Forces a token to expire
-    pub async fn force_expire(self, db: &SqlitePool) -> Result<(), RustersError> {
+    pub async fn expire(self, db: &SqlitePool) -> Result<(), RustersError> {
         query("
             update Tokens
             set expired_dt = $1

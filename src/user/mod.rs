@@ -81,7 +81,7 @@ impl User {
             .await
             .quick_match()
     }
-    pub async fn insert_new<'a>(
+    pub async fn insert<'a>(
         db: &SqlitePool, username: &'a str, password: &'a str
     ) -> Result<Self, RustersError> {
         let hashed = Secure::from_string(password)?;

@@ -62,7 +62,7 @@ async fn create_token() {
     create_db_file_if_not_exist(&db_name);
     let db = get_db(&db_name).await;
     RustersMigrator::migrate(&db).await.unwrap();
-    Token::insert_basic(&db, None).await.unwrap();
+    Token::basic(&db, None).await.unwrap();
     delete_db_file_if_exists(&db_name);
 }
 const CONSUMER: &'static str = "create_user";
@@ -79,8 +79,8 @@ async fn create_consumable_token() {
     let db = get_db(&db_name).await;
     RustersMigrator::migrate(&db).await.unwrap();
     let c = get_consumer(&db).await;
-    let t = Token::insert_basic(&db, None).await.unwrap();
-    let _ = ConsumableToken::insert_new(&db, &t, &c).await.unwrap();
+    let t = Token::basic(&db, None).await.unwrap();
+    let _ = ConsumableToken::insert(&db, &t, &c).await.unwrap();
     delete_db_file_if_exists(&db_name);
 }
 #[async_std::test]
@@ -90,12 +90,12 @@ async fn create_and_consume_token() {
     let db = get_db(&db_name).await;
     RustersMigrator::migrate(&db).await.unwrap();
     let c = get_consumer(&db).await;
-    let t = Token::insert_basic(&db, None).await.unwrap();
-    let c_tok = ConsumableToken::insert_new(&db, &t, &c).await.unwrap();
+    let t = Token::basic(&db, None).await.unwrap();
+    let c_tok = ConsumableToken::insert(&db, &t, &c).await.unwrap();
     let c_tok_2 = ConsumableToken::lookup(&db, &t, &c).await.unwrap();
     assert_eq!(c_tok.get_pk(), c_tok_2.get_pk());
     let t_hash = t.get_hash();
-    t.force_expire(&db).await.unwrap();
+    t.expire(&db).await.unwrap();
     let t_2 = Token::lookup(&db, &t_hash).await;
     assert!(t_2.is_err());
     delete_db_file_if_exists(&db_name);
@@ -103,7 +103,7 @@ async fn create_and_consume_token() {
 const USERNAME: &'static str = "test_user_1";
 const PASSWORD: &'static str = "$this_is_a_password_1";
 async fn get_new_user(db: &SqlitePool) -> User {
-    let u_res = User::insert_new(db, USERNAME, PASSWORD).await;
+    let u_res = User::insert(db, USERNAME, PASSWORD).await;
     let u = u_res.unwrap();
     assert_eq!(u.get_username(), USERNAME);
     return u;
@@ -118,7 +118,7 @@ async fn create_new_user() {
     delete_db_file_if_exists(&db_name);
 }
 async fn get_session(db: &SqlitePool, t: &Token) -> Session {
-    let s_res = Session::insert_new(db, t).await;
+    let s_res = Session::insert(db, t).await;
     s_res.unwrap()
 }
 #[async_std::test]
@@ -127,7 +127,7 @@ async fn create_session() {
     create_db_file_if_not_exist(&db_name);
     let db = get_db(&db_name).await;
     RustersMigrator::migrate(&db).await.unwrap();
-    let t = Token::insert_basic(&db, None).await.unwrap();
+    let t = Token::basic(&db, None).await.unwrap();
     get_session(&db, &t).await;
     delete_db_file_if_exists(&db_name);
 }
@@ -137,7 +137,7 @@ async fn create_and_check_session() {
     create_db_file_if_not_exist(&db_name);
     let db = get_db(&db_name).await;
     RustersMigrator::migrate(&db).await.unwrap();
-    let t = Token::insert_basic(&db, None).await.unwrap();
+    let t = Token::basic(&db, None).await.unwrap();
     let s = get_session(&db, &t).await;
     assert_eq!(t.get_pk(), s.get_token_pk());
     delete_db_file_if_exists(&db_name);
@@ -170,7 +170,7 @@ async fn login_user() {
     create_db_file_if_not_exist(&db_name);
     let db = get_db(&db_name).await;
     RustersMigrator::migrate(&db).await.unwrap();
-    let t = Token::insert_basic(&db, None).await.unwrap();
+    let t = Token::basic(&db, None).await.unwrap();
     let s = get_session(&db, &t).await;
     create_user_and_login(&db, &s).await;
     delete_db_file_if_exists(&db_name);
@@ -181,7 +181,7 @@ async fn logout_user() {
     create_db_file_if_not_exist(&db_name);
     let db = get_db(&db_name).await;
     RustersMigrator::migrate(&db).await.unwrap();
-    let t = Token::insert_basic(&db, None).await.unwrap();
+    let t = Token::basic(&db, None).await.unwrap();
     let s = get_session(&db, &t).await;
     let _ = create_user_and_login(&db, &s).await;
     assert!(check_user_logged_in(&db, &s).await);
@@ -205,7 +205,7 @@ async fn set_cookie() {
     create_db_file_if_not_exist(&db_name);
     let mut db = &get_db(&db_name).await;
     RustersMigrator::migrate(&db).await.unwrap();
-    let t = Token::insert_basic(&db, None).await.unwrap();
+    let t = Token::basic(&db, None).await.unwrap();
     let s = get_session(&db, &t).await;
     create_cookie(&mut db, &s).await;
     delete_db_file_if_exists(&db_name);
@@ -229,7 +229,7 @@ async fn read_cookie() {
     create_db_file_if_not_exist(&db_name);
     let db = get_db(&db_name).await;
     RustersMigrator::migrate(&db).await.unwrap();
-    let t = Token::insert_basic(&db, None).await.unwrap();
+    let t = Token::basic(&db, None).await.unwrap();
     let s = get_session(&db, &t).await;
     check_cookie(&db, &s).await;
     delete_db_file_if_exists(&db_name);
@@ -238,15 +238,26 @@ async fn read_cookie() {
 async fn delete_cookie() {
     let db_name = get_file_name();
     create_db_file_if_not_exist(&db_name);
-    let mut db = get_db(&db_name).await;
+    let db = get_db(&db_name).await;
     RustersMigrator::migrate(&db).await.unwrap();
-    let t = Token::insert_basic(&db, None).await.unwrap();
+    let t = Token::basic(&db, None).await.unwrap();
     let s = get_session(&db, &t).await;
     let c = check_cookie(&db, &s).await;
     let d_res = SessionCookie::delete(&db, &s, &c.get_name()).await;
     d_res.unwrap();
-    let c_opt_res = SessionCookie::read(&mut db, &s, &c.get_name()).await;
+    let c_opt_res = SessionCookie::read(&db, &s, &c.get_name()).await;
     let c_opt = c_opt_res.unwrap();
     assert!(c_opt.is_none());
     delete_db_file_if_exists(&db_name);
+}
+#[async_std::test]
+async fn lookup_session() {
+    let db_name = get_file_name();
+    create_db_file_if_not_exist(&db_name);
+    let db = get_db(&db_name).await;
+    RustersMigrator::migrate(&db).await.unwrap();
+    let t = Token::basic(&db, None).await.unwrap();
+    let s_ins = Session::insert(&db, &t).await.unwrap();
+    let s_lkp = Session::lookup(&db, &t).await.unwrap();
+    assert_eq!(s_lkp.get_pk(), s_ins.get_pk());
 }

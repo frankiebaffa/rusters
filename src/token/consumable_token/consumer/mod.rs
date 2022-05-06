@@ -61,7 +61,7 @@ impl Consumer {
             .await
             .quick_match()
     }
-    pub async fn insert_new<'a>(
+    pub async fn insert<'a>(
         db: &SqlitePool, name: &'a str
     ) -> Result<Self, RustersError> {
         let pk = query("
@@ -89,7 +89,7 @@ impl Consumer {
         let n = name.as_ref();
         match Self::lookup(db, n).await {
             Ok(c) => Ok(c),
-            Err(_) => Self::insert_new(db, n).await
+            Err(_) => Self::insert(db, n).await
         }
     }
 }

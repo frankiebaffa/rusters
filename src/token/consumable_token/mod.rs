@@ -68,7 +68,7 @@ impl ConsumableToken {
             .await
             .quick_match()
     }
-    pub async fn insert_new(
+    pub async fn insert(
         db: &SqlitePool, token: &Token, consumer: &Consumer
     ) -> Result<Self, RustersError> {
         let pk = query("

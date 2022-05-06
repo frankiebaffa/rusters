@@ -39,7 +39,7 @@ impl Session {
                 created_dt
             from Sessions as s
             where s.token_pk = $1"
-        ).bind(token.get_hash())
+        ).bind(token.get_pk())
             .fetch_one(db)
             .await
             .quick_match()
@@ -59,7 +59,7 @@ impl Session {
             .await
             .quick_match()
     }
-    pub async fn insert_new(
+    pub async fn insert(
         db: &SqlitePool, token: &Token
     ) -> Result<Self, RustersError> {
         let pk = query("
