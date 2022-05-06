@@ -7,18 +7,16 @@ edition = "2021"
 version = "1.11.0"
 features = [ "attributes" ]
 [dependencies.base64]
-version = "0.13"
+version = "0.13.0"
 [dependencies.bcrypt]
-version = "0.10"
+version = "0.13.0"
 [dependencies.chrono]
-version = "0.4"
-[dependencies.dotenv]
-version = "0.15"
+version = "0.4.19"
 [dependencies.sha3]
-version = "0.9"
+version = "0.10.1"
 [dependencies.sqlx]
 version = "0.5.13"
 features = [ "runtime-async-std-native-tls", "sqlite", "chrono" ]
 [dependencies.uuid]
-version = "0.8"
+version = "1.0.0"
 features = [ "v4" ]
