@@ -67,7 +67,7 @@ async fn create_token() {
 }
 const CONSUMER: &'static str = "create_user";
 async fn get_consumer(db: &SqlitePool) -> Consumer {
-    let consumer_res = Consumer::get_or_create(db, CONSUMER).await;
+    let consumer_res = Consumer::always(db, CONSUMER).await;
     let t = consumer_res.unwrap();
     assert_eq!(t.get_name(), CONSUMER);
     t
@@ -96,7 +96,7 @@ async fn create_and_consume_token() {
     assert_eq!(c_tok.get_pk(), c_tok_2.get_pk());
     let t_hash = t.get_hash();
     t.force_expire(&db).await.unwrap();
-    let t_2 = Token::lookup_active_by_hash(&db, &t_hash).await;
+    let t_2 = Token::lookup(&db, &t_hash).await;
     assert!(t_2.is_err());
     delete_db_file_if_exists(&db_name);
 }
@@ -149,7 +149,7 @@ async fn check_user_logged_in(db: &SqlitePool, s: &Session) -> bool {
     return c_opt.is_some();
 }
 async fn do_login(db: &SqlitePool, s: &Session, u: &User, p: &str) {
-    let u2_res = User::lookup_by_credentials(db, &u.get_username(), p).await;
+    let u2_res = User::validate(db, &u.get_username(), p).await;
     let u2 = u2_res.unwrap();
     let c1_res = SessionCookie::login(db, s, &u2).await;
     let c1 = c1_res.unwrap();

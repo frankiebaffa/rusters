@@ -29,8 +29,8 @@ impl Session {
     pub fn get_created_dt(&self) -> DateTime<Utc> {
         self.created_dt
     }
-    pub async fn lookup_by_token<'a>(
-        db: &SqlitePool, token: Token
+    pub async fn lookup<'a>(
+        db: &SqlitePool, token: &Token
     ) -> Result<Session, RustersError> {
         query_as::<_, Session>("
             select

@@ -62,7 +62,7 @@ impl User {
             .await
             .quick_match()
     }
-    pub async fn lookup_by_name<'a>(
+    pub async fn lookup<'a>(
         db: &SqlitePool, name: &'a str
     ) -> Result<Self, RustersError> {
         query_as::<_, Self>("
@@ -112,10 +112,10 @@ impl User {
             .last_insert_rowid();
         Self::lookup_by_pk(db, pk).await
     }
-    pub async fn lookup_by_credentials<'a>(
+    pub async fn validate<'a>(
         db: &SqlitePool, username: &'a str, password: &'a str
     ) -> Result<Self, RustersError> {
-        let user = match Self::lookup_by_name(db, username).await {
+        let user = match Self::lookup(db, username).await {
             Ok(user) => user,
             Err(_) => return Err(RustersError::InvalidCredentialsError),
         };

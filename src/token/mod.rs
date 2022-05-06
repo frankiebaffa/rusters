@@ -96,7 +96,7 @@ impl Token {
         let hash = Secure::rand()?;
         Self::insert_new(db, hash, expires).await
     }
-    pub async fn check_active_by_hash<'a>(
+    pub async fn possible<'a>(
         db: &SqlitePool, hash: &'a str
     ) -> Result<Option<Self>, RustersError> {
         let tokens = query_as::<_, Token>("
@@ -115,7 +115,7 @@ impl Token {
             .quick_match()?;
         Ok(tokens.into_iter().nth(0))
     }
-    pub async fn lookup_active_by_hash<'a>(
+    pub async fn lookup<'a>(
         db: &SqlitePool, hash: &'a str
     ) -> Result<Self, RustersError> {
         query_as::<_, Token>("

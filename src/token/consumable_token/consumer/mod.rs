@@ -45,7 +45,7 @@ impl Consumer {
             .await
             .quick_match()
     }
-    pub async fn lookup_by_name<'a>(
+    pub async fn lookup<'a>(
         db: &SqlitePool, name: &'a str
     ) -> Result<Self, RustersError> {
         query_as::<_, Self>("
@@ -83,11 +83,11 @@ impl Consumer {
             .last_insert_rowid();
         Self::lookup_by_pk(db, pk).await
     }
-    pub async fn get_or_create(
+    pub async fn always(
         db: &SqlitePool, name: impl AsRef<str>
     ) -> Result<Self, RustersError> {
         let n = name.as_ref();
-        match Self::lookup_by_name(db, n).await {
+        match Self::lookup(db, n).await {
             Ok(c) => Ok(c),
             Err(_) => Self::insert_new(db, n).await
         }
