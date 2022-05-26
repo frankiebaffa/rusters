@@ -3,6 +3,9 @@ name = "rusters"
 version = "2.0.0-beta1"
 authors = ["Frankie Baffa <frankiebaffa@gmail.com>"]
 edition = "2021"
+[[bin]]
+name = "migrate"
+path = "bin/migrate.rs"
 [dependencies.async-std]
 version = "1.11.0"
 features = [ "attributes" ]
@@ -12,6 +15,8 @@ version = "0.13.0"
 version = "0.13.0"
 [dependencies.chrono]
 version = "0.4.19"
+[dependencies.dotenv]
+version = "0.15.0"
 [dependencies.sha3]
 version = "0.10.1"
 [dependencies.sqlx]
