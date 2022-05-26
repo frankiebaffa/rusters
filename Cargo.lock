@@ -1010,6 +1010,7 @@ dependencies = [
  "base64",
  "bcrypt",
  "chrono",
+ "dotenv",
  "sha3",
  "sqlx",
  "uuid",
