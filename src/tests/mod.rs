@@ -20,7 +20,11 @@ fn get_file_name() -> String {
 }
 fn create_db_file_if_not_exist<'a>(name: &'a str) {
     let db_path = PathBuf::from(
-        format!("./test_dbs/{}.db", name)
+        format!(
+            "{}/test_dbs/{}.db",
+            env!("CARGO_MANIFEST_DIR"),
+            name
+        )
     );
     if !db_path.exists() {
         let file_res = std::fs::File::create(db_path);
@@ -28,24 +32,46 @@ fn create_db_file_if_not_exist<'a>(name: &'a str) {
     }
 }
 fn delete_db_file_if_exists<'a>(name: &'a str) {
-    let db_path = PathBuf::from(format!("./test_dbs/{}.db", name));
+    let db_path = PathBuf::from(
+        format!(
+            "{}/test_dbs/{}.db",
+            env!("CARGO_MANIFEST_DIR"),
+            name
+        )
+    );
     if db_path.exists() {
         let rem_res = std::fs::remove_file(db_path);
         rem_res.unwrap();
     }
-    let db_wal = PathBuf::from(format!("./test_dbs/{}.db-wal", name));
+    let db_wal = PathBuf::from(
+        format!(
+            "{}/test_dbs/{}.db-wal",
+            env!("CARGO_MANIFEST_DIR"),
+            name
+        )
+    );
     if db_wal.exists() {
         let rem_res = std::fs::remove_file(db_wal);
         rem_res.unwrap();
     }
-    let db_shm = PathBuf::from(format!("./test_dbs/{}.db-shm", name));
+    let db_shm = PathBuf::from(
+        format!(
+            "{}/test_dbs/{}.db-shm",
+            env!("CARGO_MANIFEST_DIR"),
+            name
+        )
+    );
     if db_shm.exists() {
         let rem_res = std::fs::remove_file(db_shm);
         rem_res.unwrap();
     }
 }
 async fn get_db<'a>(name: &'a str) -> SqlitePool {
-    let path = format!("sqlite://./test_dbs/{}.db", name);
+    let path = format!(
+        "sqlite://{}/test_dbs/{}.db",
+        env!("CARGO_MANIFEST_DIR"),
+        name
+    );
     SqlitePool::connect(&path).await.unwrap()
 }
 #[async_std::test]
