@@ -286,4 +286,5 @@ async fn lookup_session() {
     let s_ins = Session::insert(&db, &t).await.unwrap();
     let s_lkp = Session::lookup(&db, &t).await.unwrap();
     assert_eq!(s_lkp.get_pk(), s_ins.get_pk());
+    delete_db_file_if_exists(&db_name);
 }
