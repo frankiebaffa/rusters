@@ -6,22 +6,12 @@ edition = "2021"
 [[bin]]
 name = "migrate"
 path = "bin/migrate.rs"
-[dependencies.async-std]
-version = "1.11.0"
-features = [ "attributes" ]
-[dependencies.base64]
-version = "0.13.0"
-[dependencies.bcrypt]
-version = "0.13.0"
-[dependencies.chrono]
-version = "0.4.19"
-[dependencies.dotenv]
-version = "0.15.0"
-[dependencies.sha3]
-version = "0.10.1"
-[dependencies.sqlx]
-version = "0.5.13"
-features = [ "runtime-async-std-native-tls", "sqlite", "chrono" ]
-[dependencies.uuid]
-version = "1.0.0"
-features = [ "v4" ]
+[dependencies]
+async-std = { version = "1.11.0", features = [ "attributes" ] }
+base64 = { version = "0.13.0" }
+bcrypt = { version = "0.13.0" }
+chrono = { version = "0.4.19" }
+dotenv = { version = "0.15.0" }
+sha3 = { version = "0.10.1" }
+sqlx = { version = "0.5.13", features = [ "runtime-async-std-native-tls", "sqlite", "chrono" ] }
+uuid = { version = "1.0.0", features = [ "v4" ] }
